@@ -1,30 +1,46 @@
 {
   "expo": {
-    "name": "instagram-tracker",
+    "name": "Mutual",
     "slug": "instagram-tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "automatic",
+    "description": "Mutual — see who's really with you. Privacy-first Instagram follower tracker. 100% local, no login, no tracking.",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#E1306C"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.nuhaadh.mutual",
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": ["instagram"],
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#E1306C"
       },
-      "edgeToEdgeEnabled": true,
+      "package": "com.nuhaadh.mutual",
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    },
+    "plugins": [
+      "expo-sharing",
+      "expo-font"
+    ]
   }
 }

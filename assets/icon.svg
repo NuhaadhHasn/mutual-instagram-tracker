@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#833AB4"/>
+      <stop offset="0.55" stop-color="#E1306C"/>
+      <stop offset="1" stop-color="#FCAF45"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Gradient background with rounded corners (iOS-style mask happens at OS level too) -->
+  <rect x="0" y="0" width="1024" height="1024" rx="0" ry="0" fill="url(#bg)"/>
+
+  <!-- Larger ring: centered slightly left, full circle -->
+  <circle cx="430" cy="512" r="240" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+
+  <!-- Smaller ring: offset right, with a ~30° gap at the bottom-right.
+       Full circle would be 0..360. We draw an arc from -150° to 180° (i.e. 330° of arc),
+       leaving a 30° gap centered at -165° (≈ bottom-right of the ring). -->
+  <path d="M 794 540
+           A 200 200 0 1 1 794 484"
+        fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+</svg>
