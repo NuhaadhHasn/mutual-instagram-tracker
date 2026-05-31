@@ -63,6 +63,7 @@ export type PromptOptions = {
   cancelLabel?: string;
   icon?: IoniconName;
   multiline?: boolean;
+  secureTextEntry?: boolean;
 };
 
 type DialogState =
@@ -437,6 +438,7 @@ function PromptBody({
         placeholderTextColor={colors.textSecondary}
         autoFocus
         multiline={options.multiline}
+        secureTextEntry={options.secureTextEntry}
         autoCapitalize="none"
         autoCorrect={false}
       />

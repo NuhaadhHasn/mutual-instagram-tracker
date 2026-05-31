@@ -10,13 +10,20 @@ import {
   RefreshControl,
   Share,
   Switch,
+  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dataStore } from '../../../services/storage/dataStore';
-import { backupService } from '../../../services/storage/backupService';
+import { backupService, BackupPayload } from '../../../services/storage/backupService';
+import {
+  EncryptedEnvelope,
+  PassphraseRequiredError,
+  WrongPassphraseError,
+} from '../../../services/storage/backupCrypto';
 import { resolveUsernames } from '../../../services/usernamePrivacy';
 import { useAppStore } from '../../../shared/store/appStore';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
@@ -30,6 +37,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
 import {
+  BorderRadius,
   ColorSet,
   DarkGradients,
   Gradients,
@@ -67,6 +75,8 @@ export default function SettingsScreen({ navigation }: any) {
   const SEARCH_THRESHOLD = 10;
   const [whitelistQuery, setWhitelistQuery] = useState('');
   const [unfollowedQuery, setUnfollowedQuery] = useState('');
+  // null = idle; otherwise the busy label shown in the crypto overlay.
+  const [backupBusy, setBackupBusy] = useState<string | null>(null);
 
   const filteredWhitelist = useMemo(() => {
     const q = whitelistQuery.trim().toLowerCase();
@@ -259,8 +269,66 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   const handleExportBackup = async () => {
+    if (backupBusy) return;
+
+    const choice = await dialog.actionSheet({
+      title: 'Export backup',
+      message: 'Save your data, whitelist, and history to a file.',
+      options: [
+        {
+          label: 'Encrypt with passphrase',
+          value: 'encrypt',
+          icon: 'lock-closed-outline',
+        },
+        { label: 'Plain (unencrypted) file', value: 'plain', icon: 'document-outline' },
+      ],
+    });
+    if (choice === null) return;
+
+    let passphrase: string | undefined;
+    if (choice === 'encrypt') {
+      const p1 = await dialog.prompt({
+        title: 'Set a passphrase',
+        message: 'You will need this exact passphrase to restore the backup.',
+        placeholder: 'Passphrase',
+        confirmLabel: 'Next',
+        secureTextEntry: true,
+        icon: 'key-outline',
+      });
+      if (p1 === null) return;
+      if (p1.length === 0) {
+        dialog.alert({
+          title: 'Passphrase required',
+          message: 'An empty passphrase is not allowed.',
+          icon: 'alert-circle',
+          iconColor: colors.warning,
+        });
+        return;
+      }
+      const p2 = await dialog.prompt({
+        title: 'Confirm passphrase',
+        message: 'Type it again to avoid a typo locking you out.',
+        placeholder: 'Re-enter passphrase',
+        confirmLabel: 'Encrypt & export',
+        secureTextEntry: true,
+        icon: 'key-outline',
+      });
+      if (p2 === null) return;
+      if (p1 !== p2) {
+        dialog.alert({
+          title: 'Passphrases don’t match',
+          message: 'Please try again.',
+          icon: 'alert-circle',
+          iconColor: colors.error,
+        });
+        return;
+      }
+      passphrase = p1;
+    }
+
+    if (passphrase) setBackupBusy('Encrypting…');
     try {
-      await backupService.exportToFile();
+      await backupService.exportToFile(passphrase);
     } catch (err: any) {
       dialog.alert({
         title: 'Backup failed',
@@ -268,10 +336,69 @@ export default function SettingsScreen({ navigation }: any) {
         icon: 'alert-circle',
         iconColor: colors.error,
       });
+    } finally {
+      setBackupBusy(null);
     }
   };
 
+  const applyRestoredPayload = (payload: BackupPayload) => {
+    setFollowerData(payload.followerData ?? null);
+    setWhitelist(payload.whitelist);
+    setUnfollowed(payload.unfollowed);
+    setHistory(payload.history);
+    dialog.alert({
+      title: 'Backup restored',
+      message: 'Your data, whitelist, and history have been restored.',
+      icon: 'checkmark-circle',
+      iconColor: '#4CAF50',
+    });
+  };
+
+  const promptAndDecrypt = async (envelope: EncryptedEnvelope) => {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const pass = await dialog.prompt({
+        title: 'Enter passphrase',
+        message:
+          attempt === 0 ? 'This backup is encrypted.' : 'Wrong passphrase. Try again.',
+        placeholder: 'Passphrase',
+        confirmLabel: 'Decrypt',
+        secureTextEntry: true,
+        icon: 'key-outline',
+      });
+      if (pass === null) return;
+      if (pass.length === 0) continue;
+
+      setBackupBusy('Decrypting…');
+      try {
+        const payload = await backupService.restoreFromEnvelope(envelope, pass);
+        applyRestoredPayload(payload);
+        return;
+      } catch (e: any) {
+        if (e instanceof WrongPassphraseError) {
+          continue;
+        }
+        dialog.alert({
+          title: 'Restore failed',
+          message: e?.message || 'Could not restore backup.',
+          icon: 'alert-circle',
+          iconColor: colors.error,
+        });
+        return;
+      } finally {
+        setBackupBusy(null);
+      }
+    }
+    dialog.alert({
+      title: 'Restore failed',
+      message: 'Wrong passphrase or corrupted file.',
+      icon: 'alert-circle',
+      iconColor: colors.error,
+    });
+  };
+
   const handleRestoreBackup = async () => {
+    if (backupBusy) return;
+
     const ok = await dialog.confirm({
       title: 'Restore from backup?',
       message:
@@ -283,17 +410,13 @@ export default function SettingsScreen({ navigation }: any) {
     if (!ok) return;
     try {
       const payload = await backupService.restoreFromFile();
-      setFollowerData(payload.followerData ?? null);
-      setWhitelist(payload.whitelist);
-      setHistory(payload.history);
-      dialog.alert({
-        title: 'Backup restored',
-        message: 'Your data, whitelist, and history have been restored.',
-        icon: 'checkmark-circle',
-        iconColor: '#4CAF50',
-      });
+      applyRestoredPayload(payload);
     } catch (err: any) {
       if (err?.message === 'File selection cancelled') return;
+      if (err instanceof PassphraseRequiredError) {
+        await promptAndDecrypt(err.envelope);
+        return;
+      }
       dialog.alert({
         title: 'Restore failed',
         message: err?.message || 'Could not restore backup.',
@@ -463,6 +586,20 @@ export default function SettingsScreen({ navigation }: any) {
       }
     >
       <StatusBar style="light" />
+      <Modal
+        visible={backupBusy !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {}}
+      >
+        <View style={styles.busyOverlay}>
+          <View style={styles.busyCard}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.busyText}>{backupBusy}</Text>
+          </View>
+        </View>
+      </Modal>
       <View style={[styles.appHeader, { paddingTop: insets.top + Spacing.md }]}>
         <LinearGradient
           colors={[...heroGradient]}
@@ -907,6 +1044,26 @@ function makeStyles(colors: ColorSet) {
     container: {
       flex: 1,
       backgroundColor: colors.surface,
+    },
+    busyOverlay: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.45)',
+    },
+    busyCard: {
+      alignItems: 'center',
+      paddingVertical: Spacing.lg,
+      paddingHorizontal: Spacing.xl,
+      borderRadius: BorderRadius.lg,
+      backgroundColor: colors.surfaceElevated,
+      ...Shadows.lg,
+    },
+    busyText: {
+      marginTop: Spacing.md,
+      color: colors.text,
+      fontWeight: '600',
+      fontSize: 15,
     },
     contentContainer: {
       paddingBottom: Spacing.xl + Spacing.md,
