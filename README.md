@@ -36,10 +36,10 @@ A privacy-first mobile app, built with React Native and Expo, that helps you see
 
 ### Android
 
-Download the latest APK from [Releases](TODO — your GitHub releases URL) (after the first EAS build), or build your own:
+Download the latest APK from [Releases](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases) (after the first EAS build), or build your own:
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/NuhaadhHasn/mutual-instagram-tracker.git
 cd instagram-tracker
 npm install
 eas login

@@ -73,7 +73,7 @@ If the privacy policy changes, the "Last updated" date at the top of this docume
 Questions, concerns, or feedback:
 
 **Email:** TODO — your email here, e.g. nuhaadhh@example.com
-**GitHub Issues:** TODO — your repo URL
+**GitHub Issues:** https://github.com/NuhaadhHasn/mutual-instagram-tracker/issues
 
 ---
 
