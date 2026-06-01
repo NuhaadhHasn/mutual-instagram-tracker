@@ -14,7 +14,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../../shared/store/appStore';
 import { openInstagramProfile } from '../../../services/openInstagramProfile';
-import { resolveUsernames } from '../../../services/usernamePrivacy';
 import { isLikelyBot } from '../../../shared/utils/botHeuristic';
 import { InstagramUser } from '../../../shared/types';
 import {
@@ -31,8 +30,7 @@ import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
 import { useDialog } from '../../../shared/context/DialogContext';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { useExportUsers } from '../../../shared/hooks/useExportUsers';
 
 type SortKey = 'username' | 'date';
 
@@ -91,6 +89,7 @@ export default function FansScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
+  const exportUsers = useExportUsers();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const { refresh, refreshing } = useRefreshAppData();
@@ -101,76 +100,21 @@ export default function FansScreen({ navigation }: any) {
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
 
   const fans = followerData?.fans ?? [];
+  const hasTimestamps = useMemo(() => fans.some((u) => !!u.timestamp), [fans]);
 
   const goToImport = () =>
     navigation.navigate('Tabs', { screen: 'Import' });
 
-  const handleExport = async () => {
-    if (fans.length === 0) {
-      dialog.alert({
-        title: 'Nothing to export',
-        message: 'Your fans list is empty.',
-        icon: 'information-circle',
-      });
-      return;
-    }
-    const mode = await dialog.actionSheet({
-      title: 'Export Fans',
-      message: 'Choose how usernames are written to the file.',
-      options: [
-        { label: 'Plain usernames', value: 'plain', icon: 'person-outline' },
-        { label: 'Hashed (private)', value: 'hashed', icon: 'lock-closed-outline' },
-      ],
+  // Filtered/smart export (C14): scope chooser + Plain/Hashed via shared hook.
+  const handleExport = () =>
+    exportUsers({
+      base: fans,
+      visible: sortedList,
+      fileBase: 'mutual-fans',
+      dialogTitle: 'Export Fans',
+      listLabel: 'fans',
+      hasTimestamps,
     });
-    if (!mode) return;
-    try {
-      const hashed = mode === 'hashed';
-      const names = await resolveUsernames(
-        fans.map((u) => u.username),
-        hashed ? 'hashed' : 'plain',
-      );
-      const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-      const header = 'Username,Profile URL,Followed On\n';
-      const rows = fans
-        .map((u, i) => {
-          const date = u.timestamp
-            ? new Date(u.timestamp * 1000).toLocaleDateString()
-            : '';
-          // Hashed mode omits the profile URL — it embeds the plaintext handle.
-          const url = hashed ? '' : u.profileUrl;
-          return `${escape(names[i])},${escape(url)},${escape(date)}`;
-        })
-        .join('\n');
-      const csv = header + rows;
-      const today = new Date().toISOString().split('T')[0];
-      const fileName = `mutual-fans${hashed ? '-hashed' : ''}_${today}.csv`;
-      const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
-      await FileSystem.writeAsStringAsync(fileUri, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Export Fans',
-          UTI: 'public.comma-separated-values-text',
-        });
-      } else {
-        dialog.alert({
-          title: 'Saved',
-          message: `File saved to ${fileUri}`,
-          icon: 'document-text',
-        });
-      }
-    } catch (err: any) {
-      dialog.alert({
-        title: 'Export failed',
-        message: err?.message || 'Could not export fans list.',
-        icon: 'alert-circle',
-        iconColor: colors.error,
-      });
-    }
-  };
 
   const sortedList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

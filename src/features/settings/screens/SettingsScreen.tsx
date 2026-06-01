@@ -25,6 +25,7 @@ import {
   WrongPassphraseError,
 } from '../../../services/storage/backupCrypto';
 import { resolveUsernames } from '../../../services/usernamePrivacy';
+import { filterByRecency, RecencyScope } from '../../../services/exportCsv';
 import { useAppStore } from '../../../shared/store/appStore';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
 import UserAvatar from '../../../shared/components/UserAvatar';
@@ -168,8 +169,20 @@ export default function SettingsScreen({ navigation }: any) {
       });
       return;
     }
-    const mode = await dialog.actionSheet({
+    // C14: pick a time range for the per-list sections first…
+    const scope = await dialog.actionSheet({
       title: 'Export full report',
+      message: 'Choose the time range for the follower/following lists.',
+      options: [
+        { label: 'Everything', value: 'all', icon: 'albums-outline' },
+        { label: 'Last 7 days', value: '7', icon: 'calendar-outline' },
+        { label: 'Last 30 days', value: '30', icon: 'calendar-outline' },
+      ],
+    });
+    if (!scope) return;
+    // …then how usernames are written.
+    const mode = await dialog.actionSheet({
+      title: 'Username format',
       message: 'Choose how usernames are written to the file.',
       options: [
         { label: 'Plain usernames', value: 'plain', icon: 'person-outline' },
@@ -179,15 +192,18 @@ export default function SettingsScreen({ navigation }: any) {
     if (!mode) return;
     try {
       const hashed = mode === 'hashed';
-      // Pre-hash every username across all lists so fmt() can stay synchronous.
+      const recency = scope as RecencyScope;
+      // Apply the chosen time range to every per-list section. The summary
+      // stats below stay as the true account totals.
+      const followers = filterByRecency(followerData.followers, recency);
+      const following = filterByRecency(followerData.following, recency);
+      const unfollowers = filterByRecency(followerData.unfollowers, recency);
+      const fans = filterByRecency(followerData.fans, recency);
+
+      // Pre-hash every username across the scoped lists so fmt() stays synchronous.
       const hashMap = new Map<string, string>();
       if (hashed) {
-        const all = [
-          ...followerData.followers,
-          ...followerData.following,
-          ...followerData.unfollowers,
-          ...followerData.fans,
-        ];
+        const all = [...followers, ...following, ...unfollowers, ...fans];
         const uniqueNames = Array.from(new Set(all.map((u) => u.username)));
         const hashes = await resolveUsernames(uniqueNames, 'hashed');
         uniqueNames.forEach((name, i) => hashMap.set(name, hashes[i]));
@@ -205,9 +221,16 @@ export default function SettingsScreen({ navigation }: any) {
       };
 
       const s = followerData.stats;
+      const scopeLabel =
+        recency === 'all'
+          ? 'All time'
+          : recency === '7'
+          ? 'Last 7 days'
+          : 'Last 30 days';
       const lines: string[] = [];
       lines.push('# Mutual — Full Report');
       lines.push(`# Generated: ${new Date().toISOString()}`);
+      lines.push(`# Scope: ${scopeLabel} (lists below; stats are account totals)`);
       lines.push('');
       lines.push('Metric,Value');
       lines.push(`Followers,${s.followersCount}`);
@@ -220,26 +243,28 @@ export default function SettingsScreen({ navigation }: any) {
 
       lines.push('## Unfollowers');
       lines.push('Username,Profile URL,Followed On');
-      followerData.unfollowers.forEach((u) => lines.push(fmt(u)));
+      unfollowers.forEach((u) => lines.push(fmt(u)));
       lines.push('');
 
       lines.push('## Fans');
       lines.push('Username,Profile URL,Followed On');
-      followerData.fans.forEach((u) => lines.push(fmt(u)));
+      fans.forEach((u) => lines.push(fmt(u)));
       lines.push('');
 
       lines.push('## All followers');
       lines.push('Username,Profile URL,Followed On');
-      followerData.followers.forEach((u) => lines.push(fmt(u)));
+      followers.forEach((u) => lines.push(fmt(u)));
       lines.push('');
 
       lines.push('## All following');
       lines.push('Username,Profile URL,Followed On');
-      followerData.following.forEach((u) => lines.push(fmt(u)));
+      following.forEach((u) => lines.push(fmt(u)));
 
       const csv = lines.join('\n');
       const today = new Date().toISOString().split('T')[0];
-      const fileName = `mutual-full-report${hashed ? '-hashed' : ''}_${today}.csv`;
+      const fileName = `mutual-full-report${
+        recency !== 'all' ? `-last${recency}` : ''
+      }${hashed ? '-hashed' : ''}_${today}.csv`;
       const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
       await FileSystem.writeAsStringAsync(fileUri, csv, {
         encoding: FileSystem.EncodingType.UTF8,

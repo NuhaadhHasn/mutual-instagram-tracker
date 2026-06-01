@@ -35,8 +35,7 @@ import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
 import { haptic } from '../../../shared/utils/haptics';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import { useExportUsers } from '../../../shared/hooks/useExportUsers';
 
 type SortKey = 'username' | 'date';
 
@@ -152,6 +151,7 @@ export default function UnfollowersScreen() {
   const isHydrating = useAppStore((s) => s.isHydrating);
   const navigation = useNavigation<any>();
   const dialog = useDialog();
+  const exportUsers = useExportUsers();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const [showWhitelisted, setShowWhitelisted] = useState(false);
@@ -203,56 +203,21 @@ export default function UnfollowersScreen() {
     openInstagramProfile(user.username, user.profileUrl);
   };
 
-  const handleExport = async () => {
-    if (!followerData || followerData.unfollowers.length === 0) {
-      dialog.alert({
-        title: 'Nothing to export',
-        message: 'Your unfollowers list is empty.',
-        icon: 'information-circle',
-      });
-      return;
-    }
-    try {
-      const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-      const header = 'Username,Profile URL,Followed On\n';
-      const rows = followerData.unfollowers
-        .map((u) => {
-          const date = u.timestamp
-            ? new Date(u.timestamp * 1000).toLocaleDateString()
-            : '';
-          return `${escape(u.username)},${escape(u.profileUrl)},${escape(date)}`;
-        })
-        .join('\n');
-      const csv = header + rows;
-      const today = new Date().toISOString().split('T')[0];
-      const fileName = `mutual-unfollowers_${today}.csv`;
-      const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
-      await FileSystem.writeAsStringAsync(fileUri, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: 'Export Unfollowers',
-          UTI: 'public.comma-separated-values-text',
-        });
-      } else {
-        dialog.alert({
-          title: 'Saved',
-          message: `File saved to ${fileUri}`,
-          icon: 'document-text',
-        });
-      }
-    } catch (err: any) {
-      dialog.alert({
-        title: 'Export failed',
-        message: err?.message || 'Could not export unfollowers list.',
-        icon: 'alert-circle',
-        iconColor: colors.error,
-      });
-    }
-  };
+  // Filtered/smart export (C14): scope chooser (incl. "Visible now" = current
+  // search + whitelist/unfollowed toggles) + Plain/Hashed, via the shared hook.
+  const hasTimestamps = useMemo(
+    () => (followerData?.unfollowers ?? []).some((u) => !!u.timestamp),
+    [followerData],
+  );
+  const handleExport = () =>
+    exportUsers({
+      base: followerData?.unfollowers ?? [],
+      visible: sortedList,
+      fileBase: 'mutual-unfollowers',
+      dialogTitle: 'Export Unfollowers',
+      listLabel: 'unfollowers',
+      hasTimestamps,
+    });
 
   const handleAddToWhitelist = async (user: InstagramUser) => {
     try {

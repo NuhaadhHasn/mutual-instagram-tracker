@@ -17,7 +17,6 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { useAppStore } from '../../shared/store/appStore';
 import { dataStore } from '../../services/storage/dataStore';
 import { openInstagramProfile } from '../../services/openInstagramProfile';
-import { resolveUsernames } from '../../services/usernamePrivacy';
 import { isLikelyBot } from '../../shared/utils/botHeuristic';
 import {
   InstagramUser,
@@ -38,9 +37,8 @@ import UserItemSkeleton from '../../shared/components/skeletons/UserItemSkeleton
 import { useRefreshAppData } from '../../shared/hooks/useRefreshAppData';
 import { useMultiSelect } from '../../shared/hooks/useMultiSelect';
 import { useDialog } from '../../shared/context/DialogContext';
+import { useExportUsers } from '../../shared/hooks/useExportUsers';
 import { haptic } from '../../shared/utils/haptics';
-import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
 
 export type UsersListKind =
   | 'followers'
@@ -205,6 +203,7 @@ export default function UsersListScreen({ navigation }: any) {
   const setUnfollowed = useAppStore((s) => s.setUnfollowed);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
+  const exportUsers = useExportUsers();
   const { refresh, refreshing } = useRefreshAppData();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('username');
@@ -347,71 +346,17 @@ export default function UsersListScreen({ navigation }: any) {
     });
   };
 
-  const handleExport = async () => {
-    if (data.length === 0) {
-      dialog.alert({
-        title: 'Nothing to export',
-        message: `Your ${cfg.title.toLowerCase()} list is empty.`,
-        icon: 'information-circle',
-      });
-      return;
-    }
-    const mode = await dialog.actionSheet({
-      title: `Export ${cfg.title}`,
-      message: 'Choose how usernames are written to the file.',
-      options: [
-        { label: 'Plain usernames', value: 'plain', icon: 'person-outline' },
-        { label: 'Hashed (private)', value: 'hashed', icon: 'lock-closed-outline' },
-      ],
+  // Filtered/smart export (C14): scope chooser (Visible now / Everything /
+  // Last 7 / Last 30 / hide spam) + Plain/Hashed, via the shared hook.
+  const handleExport = () =>
+    exportUsers({
+      base: data,
+      visible: sorted,
+      fileBase: `mutual-${kind}`,
+      dialogTitle: `Export ${cfg.title}`,
+      listLabel: cfg.title.toLowerCase(),
+      hasTimestamps,
     });
-    if (!mode) return;
-    try {
-      const hashed = mode === 'hashed';
-      const names = await resolveUsernames(
-        data.map((u) => u.username),
-        hashed ? 'hashed' : 'plain',
-      );
-      const escape = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
-      const header = 'Username,Profile URL,Followed On\n';
-      const rows = data
-        .map((u, i) => {
-          const date = u.timestamp
-            ? new Date(u.timestamp * 1000).toLocaleDateString()
-            : '';
-          // Hashed mode omits the profile URL — it embeds the plaintext handle.
-          const url = hashed ? '' : u.profileUrl;
-          return `${escape(names[i])},${escape(url)},${escape(date)}`;
-        })
-        .join('\n');
-      const csv = header + rows;
-      const today = new Date().toISOString().split('T')[0];
-      const fileName = `mutual-${kind}${hashed ? '-hashed' : ''}_${today}.csv`;
-      const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
-      await FileSystem.writeAsStringAsync(fileUri, csv, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'text/csv',
-          dialogTitle: `Export ${cfg.title}`,
-          UTI: 'public.comma-separated-values-text',
-        });
-      } else {
-        dialog.alert({
-          title: 'Saved',
-          message: `File saved to ${fileUri}`,
-          icon: 'document-text',
-        });
-      }
-    } catch (err: any) {
-      dialog.alert({
-        title: 'Export failed',
-        message: err?.message || 'Could not export.',
-        icon: 'alert-circle',
-        iconColor: colors.error,
-      });
-    }
-  };
 
   const SortPill = ({
     label,
