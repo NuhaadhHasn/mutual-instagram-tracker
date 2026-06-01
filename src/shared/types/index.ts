@@ -1,5 +1,14 @@
 // Type definitions for Mutual
 
+// A tracked Instagram account (C8 multi-account). The `default` account maps to
+// the original un-suffixed storage keys so existing single-account data is
+// preserved with zero migration; additional accounts namespace their keys by id.
+export interface Account {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
 export interface InstagramUser {
   username: string;
   profileUrl: string;

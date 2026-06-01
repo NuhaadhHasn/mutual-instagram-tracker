@@ -13,6 +13,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../../shared/store/appStore';
 import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
+import { useAccounts } from '../../../shared/hooks/useAccounts';
+import { useDialog, ActionSheetOption } from '../../../shared/context/DialogContext';
 import {
   ColorSet,
   DarkGradients,
@@ -36,6 +38,8 @@ export default function DashboardScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const { refresh, refreshing } = useRefreshAppData();
+  const { accounts, currentAccount, switchAccount, addAccount } = useAccounts();
+  const dialog = useDialog();
   const [shareOpen, setShareOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -44,6 +48,37 @@ export default function DashboardScreen({ navigation }: any) {
   const handleNavWithHaptic = (target: string) => {
     haptic.tap();
     navigation.navigate(target);
+  };
+
+  // Account quick-switch chip (C8): switch between tracked accounts or add one.
+  const handleAccountChip = async () => {
+    haptic.tap();
+    const options: ActionSheetOption[] = [
+      ...accounts.map(
+        (a): ActionSheetOption => ({
+          label: a.id === currentAccount?.id ? `${a.name}  ✓` : a.name,
+          value: a.id,
+          icon: 'person-circle-outline',
+        }),
+      ),
+      { label: 'Add account', value: '__add__', icon: 'add-circle-outline' },
+    ];
+    const choice = await dialog.actionSheet({ title: 'Switch account', options });
+    if (!choice) return;
+    if (choice === '__add__') {
+      const name = await dialog.prompt({
+        title: 'Add account',
+        message: 'Give this account a name (e.g. Personal, Business).',
+        placeholder: 'Account name',
+        confirmLabel: 'Add',
+        icon: 'person-add-outline',
+      });
+      if (name === null) return;
+      await addAccount(name);
+      navigation.navigate('Import');
+      return;
+    }
+    switchAccount(choice);
   };
 
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
@@ -176,6 +211,24 @@ export default function DashboardScreen({ navigation }: any) {
       >
         <View style={styles.headerTopRow}>
           <View style={styles.headerTextCol}>
+            {currentAccount && (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleAccountChip}
+                style={styles.accountChip}
+                hitSlop={6}
+              >
+                <Ionicons name="people-circle-outline" size={15} color="#fff" />
+                <Text
+                  style={styles.accountChipText}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {currentAccount.name}
+                </Text>
+                <Ionicons name="chevron-down" size={13} color="#fff" />
+              </TouchableOpacity>
+            )}
             <Text style={styles.headerTitle}>Dashboard</Text>
             <Text style={styles.headerSubtitle}>
               Last updated · {new Date(followerData.lastUpdated).toLocaleDateString()}
@@ -375,6 +428,24 @@ function makeStyles(colors: ColorSet) {
     },
     headerTextCol: {
       flex: 1,
+    },
+    accountChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginBottom: 8,
+      gap: 5,
+      maxWidth: 200,
+    },
+    accountChipText: {
+      color: '#fff',
+      fontSize: 12,
+      fontWeight: '700',
+      flexShrink: 1,
     },
     headerIconBtn: {
       width: 38,

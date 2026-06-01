@@ -26,10 +26,12 @@ import {
 } from '../../../services/storage/backupCrypto';
 import { resolveUsernames } from '../../../services/usernamePrivacy';
 import { filterByRecency, RecencyScope } from '../../../services/exportCsv';
+import { Account } from '../../../shared/types';
 import { useAppStore } from '../../../shared/store/appStore';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
+import { useAccounts } from '../../../shared/hooks/useAccounts';
 import UserAvatar from '../../../shared/components/UserAvatar';
-import { useDialog } from '../../../shared/context/DialogContext';
+import { useDialog, ActionSheetOption } from '../../../shared/context/DialogContext';
 import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import SkeletonBox from '../../../shared/components/SkeletonBox';
@@ -63,6 +65,14 @@ export default function SettingsScreen({ navigation }: any) {
   const setAppLock = useAppStore((s) => s.setAppLock);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
+  const {
+    accounts,
+    currentAccountId,
+    switchAccount,
+    addAccount,
+    renameAccount,
+    deleteAccount,
+  } = useAccounts();
   const { refresh, refreshing } = useRefreshAppData();
   const insets = useSafeAreaInsets();
   const { colors, isDark, mode, setMode } = useTheme();
@@ -127,6 +137,59 @@ export default function SettingsScreen({ navigation }: any) {
     haptic.destructive();
     setUnfollowed(await dataStore.removeManyFromUnfollowed(names));
     ufMulti.clear();
+  };
+
+  const handleAddAccount = async () => {
+    const name = await dialog.prompt({
+      title: 'Add account',
+      message: 'Give this account a name (e.g. Personal, Business).',
+      placeholder: 'Account name',
+      confirmLabel: 'Add',
+      icon: 'person-add-outline',
+    });
+    if (name === null) return;
+    haptic.tap();
+    await addAccount(name);
+    // The new account starts empty — send the user straight to import its data.
+    navigation.navigate('Import');
+  };
+
+  const handleAccountOptions = async (acc: Account) => {
+    const options: ActionSheetOption[] = [
+      { label: 'Rename', value: 'rename', icon: 'create-outline' },
+    ];
+    if (accounts.length > 1) {
+      options.push({
+        label: 'Delete account',
+        value: 'delete',
+        icon: 'trash-outline',
+        destructive: true,
+      });
+    }
+    const choice = await dialog.actionSheet({ title: acc.name, options });
+    if (choice === 'rename') {
+      const name = await dialog.prompt({
+        title: 'Rename account',
+        initialValue: acc.name,
+        placeholder: 'Account name',
+        confirmLabel: 'Save',
+        icon: 'create-outline',
+      });
+      if (name) await renameAccount(acc.id, name);
+    } else if (choice === 'delete') {
+      const ok = await dialog.confirm({
+        title: `Delete ${acc.name}?`,
+        message:
+          "This permanently removes this account's imported data, whitelist, and history on this device. Other accounts are unaffected.",
+        confirmLabel: 'Delete',
+        destructive: true,
+        icon: 'trash-outline',
+      });
+      if (ok) {
+        haptic.destructive();
+        await deleteAccount(acc.id);
+      }
+    }
   };
 
   const handleClearData = async () => {
@@ -639,6 +702,82 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.appVersion}>v1.0.0</Text>
         </LinearGradient>
       </View>
+
+      <AnimatedFadeSlide index={0}>
+      <Text style={styles.sectionLabel}>Accounts ({accounts.length})</Text>
+      <View style={styles.groupCard}>
+        {accounts.map((acc, idx) => {
+          const active = acc.id === currentAccountId;
+          return (
+            <View key={acc.id}>
+              {idx > 0 && <Separator />}
+              <View style={styles.row}>
+                <View
+                  style={[
+                    styles.rowIconBg,
+                    {
+                      backgroundColor:
+                        (active ? colors.primary : colors.textSecondary) + '15',
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={active ? 'person-circle' : 'person-circle-outline'}
+                    size={20}
+                    color={active ? colors.primary : colors.textSecondary}
+                  />
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.6}
+                  onPress={() => {
+                    if (!active) {
+                      haptic.tap();
+                      switchAccount(acc.id);
+                    }
+                  }}
+                  style={styles.rowText}
+                >
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {acc.name}
+                  </Text>
+                  <Text style={styles.rowSubtitle}>
+                    {active ? 'Active' : 'Tap to switch'}
+                  </Text>
+                </TouchableOpacity>
+                {active && (
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={colors.primary}
+                    style={{ marginRight: 6 }}
+                  />
+                )}
+                <TouchableOpacity
+                  onPress={() => handleAccountOptions(acc)}
+                  hitSlop={10}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
+        <Separator />
+        <SettingRow
+          icon="add-circle-outline"
+          iconBg={colors.success + '15'}
+          iconColor={colors.success}
+          title="Add account"
+          subtitle="Track another Instagram account"
+          onPress={handleAddAccount}
+          isLast
+        />
+      </View>
+      </AnimatedFadeSlide>
 
       <AnimatedFadeSlide index={0}>
       <Text style={styles.sectionLabel}>Appearance</Text>

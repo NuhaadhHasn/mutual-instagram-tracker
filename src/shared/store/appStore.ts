@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import {
+  Account,
   FollowerData,
   HistoricalSnapshot,
   UnfollowedUser,
@@ -17,6 +18,9 @@ interface AppState {
   error: string | null;
   blockScreenshots: boolean;
   appLock: boolean;
+  // Multi-account (C8)
+  accounts: Account[];
+  currentAccountId: string | null;
 
   // Actions
   setFollowerData: (data: FollowerData | null) => void;
@@ -28,6 +32,8 @@ interface AppState {
   setError: (error: string | null) => void;
   setBlockScreenshots: (enabled: boolean) => void;
   setAppLock: (enabled: boolean) => void;
+  setAccounts: (accounts: Account[]) => void;
+  setCurrentAccountId: (id: string | null) => void;
   reset: () => void;
 }
 
@@ -42,6 +48,8 @@ export const useAppStore = create<AppState>((set) => ({
   error: null,
   blockScreenshots: false,
   appLock: false,
+  accounts: [],
+  currentAccountId: null,
 
   // Actions
   setFollowerData: (data) => set({ followerData: data }),
@@ -53,6 +61,8 @@ export const useAppStore = create<AppState>((set) => ({
   setError: (error) => set({ error }),
   setBlockScreenshots: (blockScreenshots) => set({ blockScreenshots }),
   setAppLock: (appLock) => set({ appLock }),
+  setAccounts: (accounts) => set({ accounts }),
+  setCurrentAccountId: (currentAccountId) => set({ currentAccountId }),
   reset: () => set({
     followerData: null,
     whitelist: [],

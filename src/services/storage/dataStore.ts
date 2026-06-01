@@ -1,28 +1,158 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  Account,
   FollowerData,
   HistoricalSnapshot,
   UnfollowedUser,
   WhitelistUser,
 } from '../../shared/types';
 
+// Per-account keys (namespaced by current account id — see keyFor) + global,
+// device-level keys (accounts registry, current pointer, prefs) that are NOT
+// namespaced and shared across all accounts.
 const KEYS = {
   FOLLOWER_DATA: '@instagram_tracker:follower_data',
   WHITELIST: '@instagram_tracker:whitelist',
   HISTORY: '@instagram_tracker:history',
   UNFOLLOWED: '@instagram_tracker:unfollowed',
+  // Global (not per-account):
+  ACCOUNTS: '@instagram_tracker:accounts',
+  CURRENT_ACCOUNT: '@instagram_tracker:current_account',
   IMPORT_COUNT: '@instagram_tracker:import_count',
   BLOCK_SCREENSHOTS: '@instagram_tracker:block_screenshots',
   APP_LOCK: '@instagram_tracker:app_lock',
 };
 
+// The first/default account reuses the original un-suffixed keys, so data saved
+// before multi-account existed stays exactly where it was (zero byte-migration).
+// Every other account suffixes its keys with `:<id>`.
+const DEFAULT_ACCOUNT_ID = 'default';
+
+function keyFor(base: string, accountId: string): string {
+  return accountId === DEFAULT_ACCOUNT_ID ? base : `${base}:${accountId}`;
+}
+
 export class DataStore {
+  // Cached active account id so the (synchronous-feeling) key builder is cheap.
+  private currentAccountId: string | null = null;
+
+  /**
+   * Resolve (and cache) the active account id, seeding the accounts registry on
+   * first run so a fresh install / pre-multi-account install always has one.
+   */
+  private async ensureCurrentAccountId(): Promise<string> {
+    if (this.currentAccountId) return this.currentAccountId;
+    await this.getAccounts(); // seeds the default account if the registry is empty
+    const stored = await AsyncStorage.getItem(KEYS.CURRENT_ACCOUNT);
+    this.currentAccountId = stored ?? DEFAULT_ACCOUNT_ID;
+    return this.currentAccountId;
+  }
+
+  /** Build the storage key for `base` under the active account. */
+  private async k(base: string): Promise<string> {
+    return keyFor(base, await this.ensureCurrentAccountId());
+  }
+
+  // ---- Accounts (C8) --------------------------------------------------------
+
+  /**
+   * The accounts registry. Seeds a single default account (mapping to the
+   * legacy un-suffixed keys) the first time it's read.
+   */
+  async getAccounts(): Promise<Account[]> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.ACCOUNTS);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed as Account[];
+      }
+    } catch (error) {
+      console.error('Error getting accounts:', error);
+    }
+    const seed: Account[] = [
+      { id: DEFAULT_ACCOUNT_ID, name: 'Account 1', createdAt: Date.now() },
+    ];
+    try {
+      await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(seed));
+    } catch (error) {
+      console.error('Error seeding accounts:', error);
+    }
+    return seed;
+  }
+
+  /** The active account id (defaults to the seeded default account). */
+  async getCurrentAccountId(): Promise<string> {
+    return this.ensureCurrentAccountId();
+  }
+
+  /** Switch the active account. Caller is responsible for re-hydrating state. */
+  async setCurrentAccount(id: string): Promise<void> {
+    this.currentAccountId = id;
+    await AsyncStorage.setItem(KEYS.CURRENT_ACCOUNT, id);
+  }
+
+  /** Create a new (empty) account and return it. Does not switch to it. */
+  async addAccount(name: string): Promise<Account> {
+    const accounts = await this.getAccounts();
+    const account: Account = {
+      id: `acc_${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
+      name: name.trim() || `Account ${accounts.length + 1}`,
+      createdAt: Date.now(),
+    };
+    await AsyncStorage.setItem(
+      KEYS.ACCOUNTS,
+      JSON.stringify([...accounts, account]),
+    );
+    return account;
+  }
+
+  /** Rename an account; returns the updated registry. */
+  async renameAccount(id: string, name: string): Promise<Account[]> {
+    const accounts = await this.getAccounts();
+    const updated = accounts.map((a) =>
+      a.id === id ? { ...a, name: name.trim() || a.name } : a,
+    );
+    await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(updated));
+    return updated;
+  }
+
+  /**
+   * Delete an account and its four data slices. Never deletes the last account.
+   * If the deleted account was active, switches to the first remaining one.
+   * Returns the updated registry + the (possibly new) active account id.
+   */
+  async deleteAccount(
+    id: string,
+  ): Promise<{ accounts: Account[]; currentAccountId: string }> {
+    const accounts = await this.getAccounts();
+    if (accounts.length <= 1) {
+      return { accounts, currentAccountId: await this.ensureCurrentAccountId() };
+    }
+    const remaining = accounts.filter((a) => a.id !== id);
+    await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(remaining));
+    await Promise.all([
+      AsyncStorage.removeItem(keyFor(KEYS.FOLLOWER_DATA, id)),
+      AsyncStorage.removeItem(keyFor(KEYS.WHITELIST, id)),
+      AsyncStorage.removeItem(keyFor(KEYS.HISTORY, id)),
+      AsyncStorage.removeItem(keyFor(KEYS.UNFOLLOWED, id)),
+    ]);
+
+    let current = await this.ensureCurrentAccountId();
+    if (current === id) {
+      current = remaining[0].id;
+      await this.setCurrentAccount(current);
+    }
+    return { accounts: remaining, currentAccountId: current };
+  }
+
+  // ---- Per-account data -----------------------------------------------------
+
   /**
    * Save follower data
    */
   async saveFollowerData(data: FollowerData): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.FOLLOWER_DATA, JSON.stringify(data));
+      await AsyncStorage.setItem(await this.k(KEYS.FOLLOWER_DATA), JSON.stringify(data));
     } catch (error) {
       console.error('Error saving follower data:', error);
       throw error;
@@ -36,12 +166,13 @@ export class DataStore {
    */
   async getFollowerData(): Promise<FollowerData | null> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.FOLLOWER_DATA);
+      const key = await this.k(KEYS.FOLLOWER_DATA);
+      const raw = await AsyncStorage.getItem(key);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as FollowerData;
       const migrated = migrateFollowerData(parsed);
       if (migrated !== parsed) {
-        await AsyncStorage.setItem(KEYS.FOLLOWER_DATA, JSON.stringify(migrated));
+        await AsyncStorage.setItem(key, JSON.stringify(migrated));
       }
       return migrated;
     } catch (error) {
@@ -55,7 +186,7 @@ export class DataStore {
    */
   async saveWhitelist(whitelist: WhitelistUser[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.WHITELIST, JSON.stringify(whitelist));
+      await AsyncStorage.setItem(await this.k(KEYS.WHITELIST), JSON.stringify(whitelist));
     } catch (error) {
       console.error('Error saving whitelist:', error);
       throw error;
@@ -67,7 +198,7 @@ export class DataStore {
    */
   async getWhitelist(): Promise<WhitelistUser[]> {
     try {
-      const data = await AsyncStorage.getItem(KEYS.WHITELIST);
+      const data = await AsyncStorage.getItem(await this.k(KEYS.WHITELIST));
       return data ? JSON.parse(data) : [];
     } catch (error) {
       console.error('Error getting whitelist:', error);
@@ -151,7 +282,7 @@ export class DataStore {
       const history = await this.getHistory();
       history.push(snapshot);
       const trimmed = history.slice(-50);
-      await AsyncStorage.setItem(KEYS.HISTORY, JSON.stringify(trimmed));
+      await AsyncStorage.setItem(await this.k(KEYS.HISTORY), JSON.stringify(trimmed));
     } catch (error) {
       console.error('Error saving snapshot:', error);
       throw error;
@@ -163,7 +294,7 @@ export class DataStore {
    */
   async getHistory(): Promise<HistoricalSnapshot[]> {
     try {
-      const data = await AsyncStorage.getItem(KEYS.HISTORY);
+      const data = await AsyncStorage.getItem(await this.k(KEYS.HISTORY));
       return data ? JSON.parse(data) : [];
     } catch (error) {
       console.error('Error getting history:', error);
@@ -176,7 +307,7 @@ export class DataStore {
    */
   async clearHistory(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(KEYS.HISTORY);
+      await AsyncStorage.removeItem(await this.k(KEYS.HISTORY));
     } catch (error) {
       console.error('Error clearing history:', error);
       throw error;
@@ -188,7 +319,7 @@ export class DataStore {
    */
   async saveUnfollowed(list: UnfollowedUser[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.UNFOLLOWED, JSON.stringify(list));
+      await AsyncStorage.setItem(await this.k(KEYS.UNFOLLOWED), JSON.stringify(list));
     } catch (error) {
       console.error('Error saving unfollowed:', error);
       throw error;
@@ -197,7 +328,7 @@ export class DataStore {
 
   async getUnfollowed(): Promise<UnfollowedUser[]> {
     try {
-      const data = await AsyncStorage.getItem(KEYS.UNFOLLOWED);
+      const data = await AsyncStorage.getItem(await this.k(KEYS.UNFOLLOWED));
       return data ? JSON.parse(data) : [];
     } catch (error) {
       console.error('Error getting unfollowed:', error);
@@ -243,6 +374,8 @@ export class DataStore {
       throw error;
     }
   }
+
+  // ---- Global, device-level prefs (shared across accounts) ------------------
 
   /**
    * Increment and return the lifetime successful-import count. Used to trigger
@@ -299,15 +432,15 @@ export class DataStore {
   }
 
   /**
-   * Clear all data
+   * Clear all data for the ACTIVE account (leaves other accounts untouched).
    */
   async clearAll(): Promise<void> {
     try {
       await Promise.all([
-        AsyncStorage.removeItem(KEYS.FOLLOWER_DATA),
-        AsyncStorage.removeItem(KEYS.WHITELIST),
-        AsyncStorage.removeItem(KEYS.HISTORY),
-        AsyncStorage.removeItem(KEYS.UNFOLLOWED),
+        AsyncStorage.removeItem(await this.k(KEYS.FOLLOWER_DATA)),
+        AsyncStorage.removeItem(await this.k(KEYS.WHITELIST)),
+        AsyncStorage.removeItem(await this.k(KEYS.HISTORY)),
+        AsyncStorage.removeItem(await this.k(KEYS.UNFOLLOWED)),
       ]);
     } catch (error) {
       console.error('Error clearing data:', error);
@@ -316,11 +449,11 @@ export class DataStore {
   }
 
   /**
-   * Check if data exists
+   * Check if data exists for the active account
    */
   async hasData(): Promise<boolean> {
     try {
-      const data = await AsyncStorage.getItem(KEYS.FOLLOWER_DATA);
+      const data = await AsyncStorage.getItem(await this.k(KEYS.FOLLOWER_DATA));
       return data !== null;
     } catch (error) {
       return false;

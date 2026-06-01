@@ -10,24 +10,36 @@ export function useAppInit() {
   const setHydrating = useAppStore((s) => s.setHydrating);
   const setBlockScreenshots = useAppStore((s) => s.setBlockScreenshots);
   const setAppLock = useAppStore((s) => s.setAppLock);
+  const setAccounts = useAppStore((s) => s.setAccounts);
+  const setCurrentAccountId = useAppStore((s) => s.setCurrentAccountId);
 
   useEffect(() => {
-    Promise.all([
-      dataStore.getFollowerData(),
-      dataStore.getWhitelist(),
-      dataStore.getUnfollowed(),
-      dataStore.getHistory(),
-      dataStore.getBlockScreenshots(),
-      dataStore.getAppLock(),
-    ])
-      .then(([data, whitelist, unfollowed, history, blockScreenshots, appLock]) => {
-        if (data) setFollowerData(data);
-        setWhitelist(whitelist);
-        setUnfollowed(unfollowed);
-        setHistory(history);
-        setBlockScreenshots(blockScreenshots);
-        setAppLock(appLock);
-      })
+    // Resolve the active account first so the per-account reads below land in
+    // the right namespace, and expose the registry to the UI (C8).
+    dataStore
+      .getCurrentAccountId()
+      .then((currentAccountId) =>
+        Promise.all([
+          dataStore.getFollowerData(),
+          dataStore.getWhitelist(),
+          dataStore.getUnfollowed(),
+          dataStore.getHistory(),
+          dataStore.getBlockScreenshots(),
+          dataStore.getAppLock(),
+          dataStore.getAccounts(),
+        ]).then(
+          ([data, whitelist, unfollowed, history, blockScreenshots, appLock, accounts]) => {
+            if (data) setFollowerData(data);
+            setWhitelist(whitelist);
+            setUnfollowed(unfollowed);
+            setHistory(history);
+            setBlockScreenshots(blockScreenshots);
+            setAppLock(appLock);
+            setAccounts(accounts);
+            setCurrentAccountId(currentAccountId);
+          },
+        ),
+      )
       .catch((err) => {
         console.error('App init failed', err);
       })
@@ -42,5 +54,7 @@ export function useAppInit() {
     setHydrating,
     setBlockScreenshots,
     setAppLock,
+    setAccounts,
+    setCurrentAccountId,
   ]);
 }
