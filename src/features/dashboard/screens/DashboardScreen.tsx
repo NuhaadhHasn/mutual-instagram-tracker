@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -29,12 +29,14 @@ import FreshnessBanner from '../../../shared/components/FreshnessBanner';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import StatCardSkeleton from '../../../shared/components/skeletons/StatCardSkeleton';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
+import ShareStatModal from '../../share/ShareStatModal';
 import { haptic } from '../../../shared/utils/haptics';
 
 export default function DashboardScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const { refresh, refreshing } = useRefreshAppData();
+  const [shareOpen, setShareOpen] = useState(false);
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -172,11 +174,26 @@ export default function DashboardScreen({ navigation }: any) {
         end={{ x: 1, y: 1 }}
         style={[styles.headerGradient, { paddingTop: insets.top + Spacing.md }]}
       >
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <Text style={styles.headerSubtitle}>
-          Last updated · {new Date(followerData.lastUpdated).toLocaleDateString()}
-        </Text>
-        <Text style={styles.headerHint}>Tap a card to explore</Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerTextCol}>
+            <Text style={styles.headerTitle}>Dashboard</Text>
+            <Text style={styles.headerSubtitle}>
+              Last updated · {new Date(followerData.lastUpdated).toLocaleDateString()}
+            </Text>
+            <Text style={styles.headerHint}>Tap a card to explore</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => {
+              haptic.tap();
+              setShareOpen(true);
+            }}
+            hitSlop={10}
+            style={styles.headerIconBtn}
+          >
+            <Ionicons name="share-social" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       <ScrollView
@@ -332,6 +349,12 @@ export default function DashboardScreen({ navigation }: any) {
           </View>
         )}
       </ScrollView>
+
+      <ShareStatModal
+        visible={shareOpen}
+        onClose={() => setShareOpen(false)}
+        stats={stats}
+      />
     </View>
   );
 }
@@ -345,6 +368,22 @@ function makeStyles(colors: ColorSet) {
     headerGradient: {
       paddingHorizontal: Spacing.lg,
       paddingBottom: Spacing.xl + Spacing.md,
+    },
+    headerTopRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    headerTextCol: {
+      flex: 1,
+    },
+    headerIconBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.18)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 2,
     },
     headerTitle: {
       fontSize: 30,
