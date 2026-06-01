@@ -122,6 +122,32 @@ The four new screens (Followers / Following / Mutual / Fans) all run on the **sa
 - [ ] Force-quit the app, reopen → all data + theme + whitelist + unfollowed persist
 - [ ] If the app ever crashes from an uncaught render error → pink "Something went wrong" screen with stack + "Try again" button (instead of a blank white screen)
 
+### New in this round — Multi-account · Share image · Filtered export (C8 / C7 / C14)
+> Run `npx expo start -c` first — this round added the native `react-native-view-shot` dependency.
+
+**Multiple accounts (C8)**
+- [ ] Settings → new **Accounts** section lists your account(s); the active one shows a checkmark + "Active"
+- [ ] Dashboard header shows an **account chip** (people icon + name) → tap it → switch sheet with an "Add account" option
+- [ ] **Add account** (Settings or the chip) → name it → app switches to the new empty account → lands on Import
+- [ ] Import a second ZIP → that data shows; switch back to the first account → its original data is intact (no mixing)
+- [ ] **Rename** (⋯ → Rename) updates the name everywhere; **Delete** (⋯ → Delete) appears only with 2+ accounts and never deletes the last one
+- [ ] **Clear All Data** clears only the active account; other accounts keep their data
+- [ ] Backup / Restore operate on the active account
+- [ ] Force-quit + reopen → the last active account is remembered
+- [ ] **Upgrade check:** existing single-account data (from before this update) still appears, under "Account 1", with nothing lost
+
+**Share your stats (C7)**
+- [ ] Dashboard header → **share-social** button → preview modal of a branded stat card
+- [ ] Toggle **Story 9:16** / **Square 1:1** → the card resizes
+- [ ] **Share image** → OS share sheet opens with a PNG; the image shows only numbers — no usernames anywhere
+- [ ] If it errors with "Native module is null" → you skipped `npx expo start -c` after the new dep landed
+
+**Filtered / smart export (C14)**
+- [ ] Any list (Followers / Following / Mutual / Fans / Unfollowers) → share icon → a **scope sheet** appears with counts: Visible now / Everything / Last 7 days / Last 30 days / Hide possible spam
+- [ ] Set a search or recency filter first → **"Visible now (N)"** matches what's on screen and exports exactly that subset
+- [ ] After scope, the **Plain / Hashed** sheet appears (now on Unfollowers too); Hashed mode blanks the profile-URL column
+- [ ] Settings → **Export full report** → asks Everything / Last 7 / Last 30 first, then Plain / Hashed; the CSV header notes the chosen scope
+
 ### Animations + haptics (need a physical device, simulator won't vibrate)
 - [ ] Import success → success vibration
 - [ ] Long-press in any list → medium vibration before selection mode kicks in

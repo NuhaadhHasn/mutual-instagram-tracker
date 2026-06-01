@@ -58,9 +58,11 @@ What you get
 • Analytics — visual breakdowns: donut, follow-back ring, bar chart, trend over time
 • History — every time you import a fresh ZIP, Mutual saves a snapshot. Watch how your followers change week over week, month over month
 • Whitelist — long-press anyone to hide them from your unfollowers list (great for celebrities, brands, news accounts you follow on purpose)
+• Multiple accounts — track personal, business, and side accounts in one app, each with its own data; switch any time
+• Share your stats — turn your numbers into a clean story or square image to post anywhere (only your totals are shown — never your follower list)
 • Dark mode — light / dark / system
-• CSV export — export any list to a CSV file you can open in Excel / Google Sheets
-• Backup — export your entire app state to a JSON file and restore it on a new phone
+• Smart CSV export — export any list, filtered by recency or what's on screen, to a CSV you can open in Excel / Google Sheets, with optional privacy-hashed usernames
+• Backup — export your entire app state to a JSON file (optionally passphrase-encrypted) and restore it on a new phone
 
 Why "privacy-first" is not marketing fluff
 • No login. Mutual never asks for your Instagram password
@@ -93,11 +95,13 @@ First release of Mutual.
 
 • Import your Instagram data export to see who doesn't follow you back
 • Fans list, analytics dashboard, history tracking
-• Whitelist accounts you don't expect to follow back
-• Light / dark mode, CSV export, backup & restore
+• Multiple accounts — track more than one Instagram in the app
+• Share your stats as a story or square image (numbers only, no usernames)
+• Whitelist accounts, filtered CSV export, backup & restore
+• Light / dark mode
 • 100% private — runs entirely on your device
 
-Thanks for trying it out. Feedback is welcome at TODO@example.com.
+Feedback is welcome at TODO@example.com.
 ```
 
 ---
@@ -133,6 +137,7 @@ Generate these by running the app on a device and using OS screenshot. Naming be
 4. **History trend chart** — differentiator vs competitors
 5. **Privacy callout** — Settings screen with the green "100% Local Storage" card visible (proof of the privacy claim)
 6. **Onboarding slide 1** — the welcome screen with the Two Linked Rings (brand)
+7. **Share card** — the shareable stat-image preview (showcases the share-your-stats feature; numbers only, no usernames)
 
 For each screenshot you can add a caption strip on top (free tools: figma.com, mockuphone.com) — short benefit line in 4 words or fewer.
 

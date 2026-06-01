@@ -32,7 +32,7 @@ All of this is held in your device's local storage (AsyncStorage). It never leav
 
 - Your Instagram password (the app never asks for it)
 - Your Instagram session, cookies, or any other authentication
-- Any account on Instagram other than the one whose data export you provided
+- Any account on Instagram other than the one(s) whose data export you provided
 - Any contacts, photos, location, microphone, or device identifiers
 - Any analytics, crash reports, or telemetry — Mutual does not send any of this anywhere
 
@@ -42,15 +42,16 @@ Mutual does not make any network requests. The only network behaviour is when yo
 
 ## Data storage and deletion
 
-All app data is stored locally on your device, namespaced under these AsyncStorage keys:
+All app data is stored locally on your device, under these AsyncStorage keys:
 
-- `@instagram_tracker:follower_data`
-- `@instagram_tracker:whitelist`
-- `@instagram_tracker:history`
-- `@instagram_tracker:theme`
-- `@instagram_tracker:onboarding_done`
+- `@instagram_tracker:follower_data` — your imported follower/following data
+- `@instagram_tracker:whitelist` — accounts you've hidden from your unfollowers list
+- `@instagram_tracker:unfollowed` — accounts you've marked as unfollowed
+- `@instagram_tracker:history` — snapshots of your past imports
+- `@instagram_tracker:accounts` and `@instagram_tracker:current_account` — the Instagram accounts you track in the app and which one is active
+- `@instagram_tracker:theme`, `@instagram_tracker:onboarding_done`, and a few small preference flags (e.g. screenshot blocking, app lock)
 
-You can delete all of it at any time from Settings → Clear All Data, or by uninstalling the app.
+If you track more than one Instagram account, each account's data is stored separately on your device under this same scheme. You can delete everything for the active account from Settings → Clear All Data, delete a whole account from Settings → Accounts, or remove all of it by uninstalling the app.
 
 You can also export everything to a JSON file from Settings → Export app state, and restore from one later. This is for your own convenience — nothing is uploaded.
 
@@ -59,6 +60,8 @@ You can also export everything to a JSON file from Settings → Export app state
 Mutual does not share any data with anyone. There are no third parties involved.
 
 The CSV export feature uses your device's built-in share sheet. The file Mutual produces is saved to your device first; whether you then send it via email, AirDrop, messages, etc. is entirely your choice, and that data is handled by whichever app you pick — not by Mutual.
+
+The "share your stats" feature works the same way: Mutual renders an image of your aggregate numbers only (followers, following, mutual, fans, follow-back ratio) — it never includes your follower list or any usernames — and hands that image to your device's share sheet for you to post or send wherever you choose.
 
 ## Children
 

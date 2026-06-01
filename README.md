@@ -17,9 +17,11 @@ A privacy-first mobile app, built with React Native and Expo, that helps you see
 - **Analytics** — donut + ratio ring + bar chart + trend over time
 - **History** — every import saved as a snapshot, with deltas vs the previous one
 - **Whitelist** — long-press to hide accounts you don't expect to follow back
+- **Multiple accounts** — track several Instagram accounts in one app, each with its own data; switch from Settings or the Dashboard chip
+- **Share your stats** — export a branded story (9:16) or square (1:1) image of your follower stats — numbers only, never usernames
+- **Smart CSV export** — export any list filtered to what's on screen / the last 7 or 30 days / minus likely spam, with plain or privacy-hashed usernames, plus a full-report export
 - **Light / dark mode**
-- **CSV export** for any list, plus full-report export
-- **Backup & restore** your entire app state to a JSON file
+- **Backup & restore** your entire app state to a JSON file (optionally passphrase-encrypted)
 - **100% private** — no network requests, no analytics, no tracking
 - **No login** — never asks for your Instagram credentials
 
@@ -107,6 +109,7 @@ instagram-tracker/
 - `react-native-gifted-charts` for charts
 - `react-native-reanimated` for screen entrance animations
 - `expo-haptics`, `expo-file-system`, `expo-document-picker`, `expo-sharing`
+- `react-native-view-shot` to capture the shareable stat image
 - JSZip for parsing Instagram's ZIP export
 
 ## Privacy & security
