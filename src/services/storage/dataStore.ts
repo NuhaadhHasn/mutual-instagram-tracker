@@ -24,7 +24,11 @@ const KEYS = {
   WIPE_ON_TAMPER: '@instagram_tracker:wipe_on_tamper',
   WIPE_THRESHOLD: '@instagram_tracker:wipe_threshold',
   FAILED_UNLOCKS: '@instagram_tracker:failed_unlocks',
+  RECENT_SEARCHES: '@instagram_tracker:recent_searches',
 };
+
+// How many recent search terms to keep (#11).
+const MAX_RECENT_SEARCHES = 12;
 
 // Shared storage prefix — used by wipeEverything to nuke every key we own
 // (including the onboarding flag, which lives outside KEYS in App.tsx).
@@ -424,6 +428,47 @@ export class DataStore {
     } catch (error) {
       console.error('Error incrementing import count:', error);
       return 0;
+    }
+  }
+
+  /**
+   * Recent search terms (#11), newest-first, de-duped, capped. Global (shared
+   * across accounts) — searching is a personal habit, not per-account data.
+   */
+  async getRecentSearches(): Promise<string[]> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.RECENT_SEARCHES);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('Error getting recent searches:', error);
+      return [];
+    }
+  }
+
+  /** Record a term (trim, drop blanks, move to front, de-dupe, cap). #11. */
+  async addRecentSearch(term: string): Promise<string[]> {
+    try {
+      const trimmed = term.trim();
+      if (!trimmed) return this.getRecentSearches();
+      const current = await this.getRecentSearches();
+      const deduped = current.filter(
+        (t) => t.toLowerCase() !== trimmed.toLowerCase(),
+      );
+      const updated = [trimmed, ...deduped].slice(0, MAX_RECENT_SEARCHES);
+      await AsyncStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      return updated;
+    } catch (error) {
+      console.error('Error adding recent search:', error);
+      return this.getRecentSearches();
+    }
+  }
+
+  async clearRecentSearches(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(KEYS.RECENT_SEARCHES);
+    } catch (error) {
+      console.error('Error clearing recent searches:', error);
     }
   }
 

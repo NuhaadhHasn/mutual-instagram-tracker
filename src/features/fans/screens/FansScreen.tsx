@@ -31,6 +31,8 @@ import FreshnessBanner from '../../../shared/components/FreshnessBanner';
 import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
+import RecentSearches from '../../../shared/components/RecentSearches';
+import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { useDialog } from '../../../shared/context/DialogContext';
 import { useExportUsers } from '../../../shared/hooks/useExportUsers';
 
@@ -105,6 +107,7 @@ export default function FansScreen({ navigation }: any) {
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const exportUsers = useExportUsers();
+  const { record: recordSearch } = useRecentSearches();
   const [searchQuery, setSearchQuery] = useState<string>(
     route.params?.initialQuery ?? '',
   );
@@ -236,6 +239,8 @@ export default function FansScreen({ navigation }: any) {
               placeholderTextColor={colors.textSecondary}
               autoCorrect={false}
               autoCapitalize="none"
+              returnKeyType="search"
+              onSubmitEditing={() => recordSearch(searchQuery)}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={10}>
@@ -243,6 +248,9 @@ export default function FansScreen({ navigation }: any) {
               </TouchableOpacity>
             )}
           </View>
+          {searchQuery.trim().length === 0 && (
+            <RecentSearches onPick={(term) => setSearchQuery(term)} />
+          )}
 
           <View style={styles.sortRow}>
             <SortPill

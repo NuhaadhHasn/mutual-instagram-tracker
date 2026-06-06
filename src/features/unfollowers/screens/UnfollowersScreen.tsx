@@ -35,6 +35,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDialog } from '../../../shared/context/DialogContext';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
+import RecentSearches from '../../../shared/components/RecentSearches';
+import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { haptic } from '../../../shared/utils/haptics';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
 import { useExportUsers } from '../../../shared/hooks/useExportUsers';
@@ -181,6 +183,7 @@ export default function UnfollowersScreen() {
   const route = useRoute<any>();
   const dialog = useDialog();
   const exportUsers = useExportUsers();
+  const { record: recordSearch } = useRecentSearches();
   const [searchQuery, setSearchQuery] = useState<string>(
     route.params?.initialQuery ?? '',
   );
@@ -580,6 +583,8 @@ export default function UnfollowersScreen() {
             placeholderTextColor={colors.textSecondary}
             autoCorrect={false}
             autoCapitalize="none"
+            returnKeyType="search"
+            onSubmitEditing={() => recordSearch(searchQuery)}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={10}>
@@ -587,6 +592,9 @@ export default function UnfollowersScreen() {
             </TouchableOpacity>
           )}
         </View>
+        {searchQuery.trim().length === 0 && (
+          <RecentSearches onPick={(term) => setSearchQuery(term)} />
+        )}
 
         <View style={styles.sortRow}>
           <SortPill

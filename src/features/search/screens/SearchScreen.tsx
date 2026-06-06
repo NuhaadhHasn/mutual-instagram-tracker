@@ -24,6 +24,8 @@ import {
 } from '../../../shared/constants/theme';
 import { useTheme } from '../../../shared/context/ThemeContext';
 import UserAvatar from '../../../shared/components/UserAvatar';
+import RecentSearches from '../../../shared/components/RecentSearches';
+import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 
 // Global cross-list search (C15c): one box, see every list a handle appears in.
 type ListLabel =
@@ -56,6 +58,7 @@ export default function SearchScreen({ navigation }: any) {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
+  const { record } = useRecentSearches();
 
   const [query, setQuery] = useState('');
 
@@ -152,6 +155,8 @@ export default function SearchScreen({ navigation }: any) {
             autoCorrect={false}
             autoCapitalize="none"
             autoFocus
+            returnKeyType="search"
+            onSubmitEditing={() => record(query)}
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => setQuery('')} hitSlop={10}>
@@ -164,6 +169,10 @@ export default function SearchScreen({ navigation }: any) {
           )}
         </View>
 
+        {query.trim().length === 0 && (
+          <RecentSearches onPick={(term) => setQuery(term)} />
+        )}
+
         <FlashList
           data={results}
           keyExtractor={(item) => item.user.username}
@@ -172,9 +181,10 @@ export default function SearchScreen({ navigation }: any) {
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.resultMain}
-                onPress={() =>
-                  openInstagramProfile(item.user.username, item.user.profileUrl)
-                }
+                onPress={() => {
+                  record(query);
+                  openInstagramProfile(item.user.username, item.user.profileUrl);
+                }}
               >
                 <UserAvatar username={item.user.username} size={44} />
                 <View style={styles.resultInfo}>

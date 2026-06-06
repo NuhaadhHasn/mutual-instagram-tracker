@@ -12,6 +12,7 @@ export function useAppInit() {
   const setAppLock = useAppStore((s) => s.setAppLock);
   const setWipeOnTamper = useAppStore((s) => s.setWipeOnTamper);
   const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
+  const setRecentSearches = useAppStore((s) => s.setRecentSearches);
   const setAccounts = useAppStore((s) => s.setAccounts);
   const setCurrentAccountId = useAppStore((s) => s.setCurrentAccountId);
 
@@ -30,6 +31,7 @@ export function useAppInit() {
           dataStore.getAppLock(),
           dataStore.getWipeOnTamper(),
           dataStore.getWipeThreshold(),
+          dataStore.getRecentSearches(),
           dataStore.getAccounts(),
         ]).then(
           ([
@@ -41,6 +43,7 @@ export function useAppInit() {
             appLock,
             wipeOnTamper,
             wipeThreshold,
+            recentSearches,
             accounts,
           ]) => {
             if (data) setFollowerData(data);
@@ -51,6 +54,7 @@ export function useAppInit() {
             setAppLock(appLock);
             setWipeOnTamper(wipeOnTamper);
             setWipeThreshold(wipeThreshold);
+            setRecentSearches(recentSearches);
             setAccounts(accounts);
             setCurrentAccountId(currentAccountId);
           },
@@ -72,6 +76,7 @@ export function useAppInit() {
     setAppLock,
     setWipeOnTamper,
     setWipeThreshold,
+    setRecentSearches,
     setAccounts,
     setCurrentAccountId,
   ]);

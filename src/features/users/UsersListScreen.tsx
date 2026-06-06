@@ -36,6 +36,8 @@ import { useTheme } from '../../shared/context/ThemeContext';
 import UserAvatar from '../../shared/components/UserAvatar';
 import AnimatedFadeSlide from '../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../shared/components/skeletons/UserItemSkeleton';
+import RecentSearches from '../../shared/components/RecentSearches';
+import { useRecentSearches } from '../../shared/hooks/useRecentSearches';
 import { useRefreshAppData } from '../../shared/hooks/useRefreshAppData';
 import { useMultiSelect } from '../../shared/hooks/useMultiSelect';
 import { useDialog } from '../../shared/context/DialogContext';
@@ -236,6 +238,7 @@ export default function UsersListScreen({ navigation }: any) {
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const exportUsers = useExportUsers();
+  const { record: recordSearch } = useRecentSearches();
   const { refresh, refreshing } = useRefreshAppData();
   const [searchQuery, setSearchQuery] = useState(route.params.initialQuery ?? '');
   const [sortBy, setSortBy] = useState<SortKey>('username');
@@ -540,6 +543,8 @@ export default function UsersListScreen({ navigation }: any) {
                 placeholderTextColor={colors.textSecondary}
                 autoCorrect={false}
                 autoCapitalize="none"
+                returnKeyType="search"
+                onSubmitEditing={() => recordSearch(searchQuery)}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={10}>
@@ -551,6 +556,9 @@ export default function UsersListScreen({ navigation }: any) {
                 </TouchableOpacity>
               )}
             </View>
+            {searchQuery.trim().length === 0 && (
+              <RecentSearches onPick={(term) => setSearchQuery(term)} />
+            )}
             <View style={styles.sortRow}>
               <SortPill
                 label="A–Z"
