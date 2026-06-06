@@ -60,7 +60,7 @@ export interface WhitelistUser {
   username: string;
   profileUrl: string;
   addedAt: number;
-  category?: string;
+  category?: string; // Private, local-only tag (one per user; preset or custom). C4.
   note?: string; // Private, local-only label/note for this account. C4.
 }
 

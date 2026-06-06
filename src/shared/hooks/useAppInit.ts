@@ -10,6 +10,8 @@ export function useAppInit() {
   const setHydrating = useAppStore((s) => s.setHydrating);
   const setBlockScreenshots = useAppStore((s) => s.setBlockScreenshots);
   const setAppLock = useAppStore((s) => s.setAppLock);
+  const setWipeOnTamper = useAppStore((s) => s.setWipeOnTamper);
+  const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
   const setAccounts = useAppStore((s) => s.setAccounts);
   const setCurrentAccountId = useAppStore((s) => s.setCurrentAccountId);
 
@@ -26,15 +28,29 @@ export function useAppInit() {
           dataStore.getHistory(),
           dataStore.getBlockScreenshots(),
           dataStore.getAppLock(),
+          dataStore.getWipeOnTamper(),
+          dataStore.getWipeThreshold(),
           dataStore.getAccounts(),
         ]).then(
-          ([data, whitelist, unfollowed, history, blockScreenshots, appLock, accounts]) => {
+          ([
+            data,
+            whitelist,
+            unfollowed,
+            history,
+            blockScreenshots,
+            appLock,
+            wipeOnTamper,
+            wipeThreshold,
+            accounts,
+          ]) => {
             if (data) setFollowerData(data);
             setWhitelist(whitelist);
             setUnfollowed(unfollowed);
             setHistory(history);
             setBlockScreenshots(blockScreenshots);
             setAppLock(appLock);
+            setWipeOnTamper(wipeOnTamper);
+            setWipeThreshold(wipeThreshold);
             setAccounts(accounts);
             setCurrentAccountId(currentAccountId);
           },
@@ -54,6 +70,8 @@ export function useAppInit() {
     setHydrating,
     setBlockScreenshots,
     setAppLock,
+    setWipeOnTamper,
+    setWipeThreshold,
     setAccounts,
     setCurrentAccountId,
   ]);

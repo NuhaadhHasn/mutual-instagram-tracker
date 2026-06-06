@@ -21,7 +21,19 @@ const KEYS = {
   IMPORT_COUNT: '@instagram_tracker:import_count',
   BLOCK_SCREENSHOTS: '@instagram_tracker:block_screenshots',
   APP_LOCK: '@instagram_tracker:app_lock',
+  WIPE_ON_TAMPER: '@instagram_tracker:wipe_on_tamper',
+  WIPE_THRESHOLD: '@instagram_tracker:wipe_threshold',
+  FAILED_UNLOCKS: '@instagram_tracker:failed_unlocks',
 };
+
+// Shared storage prefix — used by wipeEverything to nuke every key we own
+// (including the onboarding flag, which lives outside KEYS in App.tsx).
+const STORAGE_PREFIX = '@instagram_tracker:';
+
+// Wipe-on-tamper threshold bounds (D5). Default matches the IMPROVEMENTS roadmap.
+const DEFAULT_WIPE_THRESHOLD = 10;
+const MIN_WIPE_THRESHOLD = 3;
+const MAX_WIPE_THRESHOLD = 20;
 
 // The first/default account reuses the original un-suffixed keys, so data saved
 // before multi-account existed stays exactly where it was (zero byte-migration).
@@ -245,6 +257,28 @@ export class DataStore {
   }
 
   /**
+   * Set (or clear, when category is null/empty) the private tag on a whitelist
+   * entry. Returns the updated whitelist. C4.
+   */
+  async setWhitelistCategory(
+    username: string,
+    category: string | null,
+  ): Promise<WhitelistUser[]> {
+    try {
+      const trimmed = category?.trim() ? category.trim() : undefined;
+      const whitelist = await this.getWhitelist();
+      const updated = whitelist.map((u) =>
+        u.username === username ? { ...u, category: trimmed } : u,
+      );
+      await this.saveWhitelist(updated);
+      return updated;
+    } catch (error) {
+      console.error('Error setting whitelist category:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove user from whitelist
    */
   async removeFromWhitelist(username: string): Promise<void> {
@@ -428,6 +462,108 @@ export class DataStore {
       await AsyncStorage.setItem(KEYS.APP_LOCK, enabled ? 'true' : 'false');
     } catch (error) {
       console.error('Error saving app-lock preference:', error);
+    }
+  }
+
+  /**
+   * Wipe-on-tamper preference (D5). Erases everything after too many failed
+   * unlock attempts. Only meaningful when app lock is on. Defaults to off.
+   */
+  async getWipeOnTamper(): Promise<boolean> {
+    try {
+      return (await AsyncStorage.getItem(KEYS.WIPE_ON_TAMPER)) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  async setWipeOnTamper(enabled: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(
+        KEYS.WIPE_ON_TAMPER,
+        enabled ? 'true' : 'false',
+      );
+    } catch (error) {
+      console.error('Error saving wipe-on-tamper preference:', error);
+    }
+  }
+
+  /** Failed-unlock count before a wipe fires (clamped). D5. */
+  async getWipeThreshold(): Promise<number> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.WIPE_THRESHOLD);
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n)) {
+        return Math.min(MAX_WIPE_THRESHOLD, Math.max(MIN_WIPE_THRESHOLD, n));
+      }
+    } catch {
+      // fall through to default
+    }
+    return DEFAULT_WIPE_THRESHOLD;
+  }
+
+  async setWipeThreshold(n: number): Promise<void> {
+    try {
+      const clamped = Math.min(
+        MAX_WIPE_THRESHOLD,
+        Math.max(MIN_WIPE_THRESHOLD, Math.round(n)),
+      );
+      await AsyncStorage.setItem(KEYS.WIPE_THRESHOLD, String(clamped));
+    } catch (error) {
+      console.error('Error saving wipe threshold:', error);
+    }
+  }
+
+  /**
+   * Persisted failed-unlock counter (D5). Persisted (not in-memory) so a
+   * force-quit between attempts can't reset it. Reset to 0 on a successful
+   * unlock and after a wipe.
+   */
+  async getFailedUnlocks(): Promise<number> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.FAILED_UNLOCKS);
+      const n = raw ? parseInt(raw, 10) : 0;
+      return Number.isFinite(n) && n > 0 ? n : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  async incrementFailedUnlocks(): Promise<number> {
+    try {
+      const next = (await this.getFailedUnlocks()) + 1;
+      await AsyncStorage.setItem(KEYS.FAILED_UNLOCKS, String(next));
+      return next;
+    } catch (error) {
+      console.error('Error incrementing failed unlocks:', error);
+      return 0;
+    }
+  }
+
+  async resetFailedUnlocks(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(KEYS.FAILED_UNLOCKS);
+    } catch (error) {
+      console.error('Error resetting failed unlocks:', error);
+    }
+  }
+
+  /**
+   * Full nuclear reset (D5 wipe-on-tamper). Removes EVERY key this app owns —
+   * all accounts' data, the accounts registry, every device pref, AND the
+   * onboarding flag — so the app drops back to a clean first-launch state with
+   * no trace. Uses Promise.all(removeItem), never multiRemove (Expo Go rule).
+   */
+  async wipeEverything(): Promise<void> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const ours = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
+      await Promise.all(ours.map((k) => AsyncStorage.removeItem(k)));
+      // Drop the cached account id so the next read re-seeds the default.
+      this.currentAccountId = null;
+    } catch (error) {
+      console.error('Error wiping all data:', error);
+      throw error;
     }
   }
 

@@ -6,16 +6,32 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { useTheme } from '../../shared/context/ThemeContext';
 import { ColorSet, Gradients, DarkGradients, Spacing } from '../../shared/constants/theme';
 import { haptic } from '../../shared/utils/haptics';
+import { dataStore } from '../../services/storage/dataStore';
+import { useAppStore } from '../../shared/store/appStore';
 
 /**
  * Full-screen lock shown before the app content when app-lock is enabled (D1).
  * Authenticates with biometrics, falling back to the device passcode. The app
  * is only the gate — auth is handled entirely by the OS.
+ *
+ * Wipe-on-tamper (D5): when enabled, GENUINE auth failures (a wrong biometric /
+ * passcode → `error === 'authentication_failed'`) increment a persisted counter;
+ * once it reaches the threshold the app is fully wiped and `onWiped` fires.
+ * Cancelling the OS prompt (`user_cancel` / `system_cancel` / `app_cancel`) is
+ * NOT a failure, so backgrounding the app never counts toward a wipe.
  */
-export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+export default function LockScreen({
+  onUnlock,
+  onWiped,
+}: {
+  onUnlock: () => void;
+  onWiped: () => void;
+}) {
   const { colors, isDark } = useTheme();
   const styles = makeStyles(colors);
   const [authing, setAuthing] = useState(false);
+  // null until the D5 prefs load; warning only shows once it's on with failures.
+  const [remaining, setRemaining] = useState<number | null>(null);
   const gradient = isDark ? DarkGradients.primary : Gradients.primary;
 
   const authenticate = useCallback(async () => {
@@ -29,16 +45,35 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       });
       if (result.success) {
         haptic.success();
+        await dataStore.resetFailedUnlocks();
         onUnlock();
+        return;
+      }
+
+      haptic.error();
+      // Only a genuine wrong attempt counts — never a user/system/app cancel.
+      const error = (result as { error?: string }).error;
+      if (error !== 'authentication_failed') return;
+
+      const wipeOn = await dataStore.getWipeOnTamper();
+      if (!wipeOn) return;
+
+      const threshold = await dataStore.getWipeThreshold();
+      const count = await dataStore.incrementFailedUnlocks();
+      if (count >= threshold) {
+        await dataStore.wipeEverything();
+        useAppStore.getState().reset();
+        await dataStore.resetFailedUnlocks();
+        onWiped();
       } else {
-        haptic.error();
+        setRemaining(threshold - count);
       }
     } catch {
       haptic.error();
     } finally {
       setAuthing(false);
     }
-  }, [authing, onUnlock]);
+  }, [authing, onUnlock, onWiped]);
 
   // Auto-prompt on mount.
   useEffect(() => {
@@ -60,6 +95,15 @@ export default function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <Text style={styles.subtitle}>
         Unlock with your fingerprint, Face ID, or device passcode.
       </Text>
+      {remaining !== null && (
+        <View style={styles.warnPill}>
+          <Ionicons name="warning" size={14} color="#fff" />
+          <Text style={styles.warnText}>
+            {remaining} {remaining === 1 ? 'attempt' : 'attempts'} left before
+            all data is erased
+          </Text>
+        </View>
+      )}
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={authenticate}
@@ -103,6 +147,21 @@ function makeStyles(colors: ColorSet) {
       marginTop: Spacing.sm,
       marginBottom: Spacing.xl,
       lineHeight: 20,
+    },
+    warnPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.28)',
+      borderRadius: 20,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 8,
+      marginBottom: Spacing.lg,
+    },
+    warnText: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: '700',
+      marginLeft: 6,
     },
     button: {
       flexDirection: 'row',

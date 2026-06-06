@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppStore } from '../../../shared/store/appStore';
 import { openInstagramProfile } from '../../../services/openInstagramProfile';
 import { isLikelyBot } from '../../../shared/utils/botHeuristic';
+import { ghostScore, GhostBand } from '../../../shared/utils/ghostScore';
 import { InstagramUser } from '../../../shared/types';
 import {
   ColorSet,
@@ -45,16 +46,20 @@ type Styles = ReturnType<typeof makeStyles>;
 const UserItem = React.memo(function UserItem({
   user,
   isBot,
+  ghostBand,
   onPress,
   colors,
   styles,
 }: {
   user: InstagramUser;
   isBot: boolean;
+  ghostBand?: GhostBand;
   onPress: (u: InstagramUser) => void;
   colors: ColorSet;
   styles: Styles;
 }) {
+  const ghostColor =
+    ghostBand === 'Likely inactive' ? colors.error : colors.warning;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -75,6 +80,14 @@ const UserItem = React.memo(function UserItem({
           <View style={styles.botChip}>
             <Ionicons name="alert-circle" size={11} color={colors.warning} />
             <Text style={styles.botChipText}>possible spam</Text>
+          </View>
+        )}
+        {ghostBand && (
+          <View style={[styles.ghostChip, { backgroundColor: ghostColor + '1A' }]}>
+            <Ionicons name="moon-outline" size={11} color={ghostColor} />
+            <Text style={[styles.ghostChipText, { color: ghostColor }]}>
+              {ghostBand}
+            </Text>
           </View>
         )}
       </View>
@@ -251,17 +264,21 @@ export default function FansScreen({ navigation }: any) {
         <FlashList
           data={sortedList}
           keyExtractor={(item, idx) => `${item.username}-${idx}`}
-          renderItem={({ item, index }) => (
-            <AnimatedFadeSlide index={index} disabled>
-              <UserItem
-                user={item}
-                isBot={isLikelyBot(item.username)}
-                onPress={handleOpenProfile}
-                colors={colors}
-                styles={styles}
-              />
-            </AnimatedFadeSlide>
-          )}
+          renderItem={({ item, index }) => {
+            const g = ghostScore(item);
+            return (
+              <AnimatedFadeSlide index={index} disabled>
+                <UserItem
+                  user={item}
+                  isBot={isLikelyBot(item.username)}
+                  ghostBand={g.isGhost ? g.band : undefined}
+                  onPress={handleOpenProfile}
+                  colors={colors}
+                  styles={styles}
+                />
+              </AnimatedFadeSlide>
+            );
+          }}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -444,6 +461,20 @@ function makeStyles(colors: ColorSet) {
       fontSize: 10,
       fontWeight: '700',
       color: colors.warning,
+      marginLeft: 3,
+    },
+    ghostChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginTop: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    ghostChipText: {
+      fontSize: 10,
+      fontWeight: '700',
       marginLeft: 3,
     },
     openBtn: {

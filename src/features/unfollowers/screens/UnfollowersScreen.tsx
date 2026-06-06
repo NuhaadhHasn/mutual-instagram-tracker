@@ -15,6 +15,8 @@ import { useAppStore } from '../../../shared/store/appStore';
 import { dataStore } from '../../../services/storage/dataStore';
 import { openInstagramProfile } from '../../../services/openInstagramProfile';
 import { isLikelyBot } from '../../../shared/utils/botHeuristic';
+import { ghostScore, GhostBand } from '../../../shared/utils/ghostScore';
+import { tagColor } from '../../../shared/constants/tags';
 import {
   InstagramUser,
   UnfollowedUser,
@@ -50,6 +52,9 @@ type UserItemProps = {
   isWhitelisted: boolean;
   isUnfollowed: boolean;
   isBot: boolean;
+  // Primitives (not the ghost object) so React.memo stays effective. C1 / C4.
+  ghostBand?: GhostBand;
+  tag?: string;
   isSelected: boolean;
   selectionActive: boolean;
   onTap: (u: InstagramUser) => void;
@@ -65,6 +70,8 @@ const UserItem = React.memo(function UserItem({
   isWhitelisted,
   isUnfollowed,
   isBot,
+  ghostBand,
+  tag,
   isSelected,
   selectionActive,
   onTap,
@@ -72,6 +79,8 @@ const UserItem = React.memo(function UserItem({
   colors,
   styles,
 }: UserItemProps) {
+  const ghostColor =
+    ghostBand === 'Likely inactive' ? colors.error : colors.warning;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
@@ -117,7 +126,26 @@ const UserItem = React.memo(function UserItem({
             <Text style={styles.botChipText}>possible spam</Text>
           </View>
         )}
+        {ghostBand && (
+          <View style={[styles.ghostChip, { backgroundColor: ghostColor + '1A' }]}>
+            <Ionicons name="moon-outline" size={11} color={ghostColor} />
+            <Text style={[styles.ghostChipText, { color: ghostColor }]}>
+              {ghostBand}
+            </Text>
+          </View>
+        )}
       </View>
+      {tag && !selectionActive && (
+        <View style={[styles.tagChip, { backgroundColor: tagColor(tag) + '1A' }]}>
+          <Ionicons name="pricetag" size={10} color={tagColor(tag)} />
+          <Text
+            style={[styles.tagChipText, { color: tagColor(tag) }]}
+            numberOfLines={1}
+          >
+            {tag}
+          </Text>
+        </View>
+      )}
       {!selectionActive && (isWhitelisted || isUnfollowed) && (
         <View style={styles.whitelistBadge}>
           {isWhitelisted && (
@@ -167,6 +195,16 @@ export default function UnfollowersScreen() {
 
   const whitelistSet = useMemo(
     () => new Set(whitelist.map((w) => w.username)),
+    [whitelist],
+  );
+  // username → tag, for whitelisted users that carry one. C4.
+  const whitelistTagMap = useMemo(
+    () =>
+      new Map(
+        whitelist
+          .filter((w) => w.category)
+          .map((w) => [w.username, w.category as string]),
+      ),
     [whitelist],
   );
   const unfollowedSet = useMemo(
@@ -571,22 +609,27 @@ export default function UnfollowersScreen() {
       <FlashList
         data={sortedList}
         keyExtractor={(item, idx) => `${item.username}-${idx}`}
-        renderItem={({ item, index }) => (
-          <AnimatedFadeSlide index={index} disabled>
-            <UserItem
-              user={item}
-              isWhitelisted={whitelistSet.has(item.username)}
-              isUnfollowed={unfollowedSet.has(item.username)}
-              isBot={isLikelyBot(item.username)}
-              isSelected={multi.has(item.username)}
-              selectionActive={multi.isActive}
-              onTap={handleTap}
-              onLong={handleLongPress}
-              colors={colors}
-              styles={styles}
-            />
-          </AnimatedFadeSlide>
-        )}
+        renderItem={({ item, index }) => {
+          const g = ghostScore(item);
+          return (
+            <AnimatedFadeSlide index={index} disabled>
+              <UserItem
+                user={item}
+                isWhitelisted={whitelistSet.has(item.username)}
+                isUnfollowed={unfollowedSet.has(item.username)}
+                isBot={isLikelyBot(item.username)}
+                ghostBand={g.isGhost ? g.band : undefined}
+                tag={whitelistTagMap.get(item.username)}
+                isSelected={multi.has(item.username)}
+                selectionActive={multi.isActive}
+                onTap={handleTap}
+                onLong={handleLongPress}
+                colors={colors}
+                styles={styles}
+              />
+            </AnimatedFadeSlide>
+          );
+        }}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -788,6 +831,35 @@ function makeStyles(colors: ColorSet) {
       fontSize: 10,
       fontWeight: '700',
       color: colors.warning,
+      marginLeft: 3,
+    },
+    ghostChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginTop: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    ghostChipText: {
+      fontSize: 10,
+      fontWeight: '700',
+      marginLeft: 3,
+    },
+    tagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'center',
+      maxWidth: 96,
+      marginRight: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    tagChipText: {
+      fontSize: 10,
+      fontWeight: '700',
       marginLeft: 3,
     },
     openBtn: {

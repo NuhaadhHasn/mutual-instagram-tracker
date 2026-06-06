@@ -18,6 +18,9 @@ interface AppState {
   error: string | null;
   blockScreenshots: boolean;
   appLock: boolean;
+  // Wipe-on-tamper (D5)
+  wipeOnTamper: boolean;
+  wipeThreshold: number;
   // Multi-account (C8)
   accounts: Account[];
   currentAccountId: string | null;
@@ -32,6 +35,8 @@ interface AppState {
   setError: (error: string | null) => void;
   setBlockScreenshots: (enabled: boolean) => void;
   setAppLock: (enabled: boolean) => void;
+  setWipeOnTamper: (enabled: boolean) => void;
+  setWipeThreshold: (n: number) => void;
   setAccounts: (accounts: Account[]) => void;
   setCurrentAccountId: (id: string | null) => void;
   reset: () => void;
@@ -48,6 +53,8 @@ export const useAppStore = create<AppState>((set) => ({
   error: null,
   blockScreenshots: false,
   appLock: false,
+  wipeOnTamper: false,
+  wipeThreshold: 10,
   accounts: [],
   currentAccountId: null,
 
@@ -61,6 +68,8 @@ export const useAppStore = create<AppState>((set) => ({
   setError: (error) => set({ error }),
   setBlockScreenshots: (blockScreenshots) => set({ blockScreenshots }),
   setAppLock: (appLock) => set({ appLock }),
+  setWipeOnTamper: (wipeOnTamper) => set({ wipeOnTamper }),
+  setWipeThreshold: (wipeThreshold) => set({ wipeThreshold }),
   setAccounts: (accounts) => set({ accounts }),
   setCurrentAccountId: (currentAccountId) => set({ currentAccountId }),
   reset: () => set({

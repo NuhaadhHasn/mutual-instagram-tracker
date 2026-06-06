@@ -18,6 +18,8 @@ import { useAppStore } from '../../shared/store/appStore';
 import { dataStore } from '../../services/storage/dataStore';
 import { openInstagramProfile } from '../../services/openInstagramProfile';
 import { isLikelyBot } from '../../shared/utils/botHeuristic';
+import { ghostScore, GhostBand } from '../../shared/utils/ghostScore';
+import { tagColor } from '../../shared/constants/tags';
 import {
   InstagramUser,
   UnfollowedUser,
@@ -96,6 +98,9 @@ type UserRowProps = {
   isWhitelisted: boolean;
   isUnfollowed: boolean;
   isBot: boolean;
+  // Primitives (not the ghost object) so React.memo stays effective. C1 / C4.
+  ghostBand?: GhostBand;
+  tag?: string;
   selectionActive: boolean;
   onTap: (u: InstagramUser) => void;
   onLong: (u: InstagramUser) => void;
@@ -112,12 +117,16 @@ const UserRow = React.memo(function UserRow({
   isWhitelisted,
   isUnfollowed,
   isBot,
+  ghostBand,
+  tag,
   selectionActive,
   onTap,
   onLong,
   colors,
   styles,
 }: UserRowProps) {
+  const ghostColor =
+    ghostBand === 'Likely inactive' ? colors.error : colors.warning;
   return (
     // Entrance animation disabled: FlashList recycles cells, so a per-row
     // staggered fade keyed to index re-fires on scroll. C15e-6.
@@ -165,7 +174,28 @@ const UserRow = React.memo(function UserRow({
               <Text style={styles.botChipText}>possible spam</Text>
             </View>
           )}
+          {ghostBand && (
+            <View style={[styles.ghostChip, { backgroundColor: ghostColor + '1A' }]}>
+              <Ionicons name="moon-outline" size={11} color={ghostColor} />
+              <Text style={[styles.ghostChipText, { color: ghostColor }]}>
+                {ghostBand}
+              </Text>
+            </View>
+          )}
         </View>
+        {tag && !selectionActive && (
+          <View
+            style={[styles.tagChip, { backgroundColor: tagColor(tag) + '1A' }]}
+          >
+            <Ionicons name="pricetag" size={10} color={tagColor(tag)} />
+            <Text
+              style={[styles.tagChipText, { color: tagColor(tag) }]}
+              numberOfLines={1}
+            >
+              {tag}
+            </Text>
+          </View>
+        )}
         {(isWhitelisted || isUnfollowed) && !selectionActive && (
           <View style={styles.badgeRow}>
             {isWhitelisted && (
@@ -208,6 +238,7 @@ export default function UsersListScreen({ navigation }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const [recency, setRecency] = useState<RecencyFilter>('all');
+  const [ghostOnly, setGhostOnly] = useState(false);
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
@@ -249,14 +280,27 @@ export default function UsersListScreen({ navigation }: any) {
         (u) => u.timestamp && u.timestamp * 1000 >= cutoff,
       );
     }
+    if (ghostOnly) {
+      filtered = filtered.filter((u) => ghostScore(u).isGhost);
+    }
     return [...filtered].sort((a, b) => {
       if (sortBy === 'username') return a.username.localeCompare(b.username);
       return (b.timestamp || 0) - (a.timestamp || 0);
     });
-  }, [data, searchQuery, sortBy, recency]);
+  }, [data, searchQuery, sortBy, recency, ghostOnly]);
 
   const whitelistSet = useMemo(
     () => new Set(whitelist.map((w) => w.username)),
+    [whitelist],
+  );
+  // username → tag, for whitelisted users that carry one. C4.
+  const whitelistTagMap = useMemo(
+    () =>
+      new Map(
+        whitelist
+          .filter((w) => w.category)
+          .map((w) => [w.username, w.category as string]),
+      ),
     [whitelist],
   );
   const unfollowedSet = useMemo(
@@ -537,6 +581,11 @@ export default function UsersListScreen({ navigation }: any) {
               active={recency === '30'}
               onPress={() => setRecency('30')}
             />
+            <SortPill
+              label="Likely inactive"
+              active={ghostOnly}
+              onPress={() => setGhostOnly((v) => !v)}
+            />
           </View>
         )}
 
@@ -550,21 +599,26 @@ export default function UsersListScreen({ navigation }: any) {
           <FlashList
             data={sorted}
             keyExtractor={(item, idx) => `${item.username}-${idx}`}
-            renderItem={({ item, index }) => (
-              <UserRow
-                user={item}
-                index={index}
-                isSelected={multi.has(item.username)}
-                isWhitelisted={whitelistSet.has(item.username)}
-                isUnfollowed={unfollowedSet.has(item.username)}
-                isBot={isLikelyBot(item.username)}
-                selectionActive={multi.isActive}
-                onTap={handleTap}
-                onLong={handleLongPress}
-                colors={colors}
-                styles={styles}
-              />
-            )}
+            renderItem={({ item, index }) => {
+              const g = ghostScore(item);
+              return (
+                <UserRow
+                  user={item}
+                  index={index}
+                  isSelected={multi.has(item.username)}
+                  isWhitelisted={whitelistSet.has(item.username)}
+                  isUnfollowed={unfollowedSet.has(item.username)}
+                  isBot={isLikelyBot(item.username)}
+                  ghostBand={g.isGhost ? g.band : undefined}
+                  tag={whitelistTagMap.get(item.username)}
+                  selectionActive={multi.isActive}
+                  onTap={handleTap}
+                  onLong={handleLongPress}
+                  colors={colors}
+                  styles={styles}
+                />
+              );
+            }}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshControl={
@@ -759,6 +813,35 @@ function makeStyles(colors: ColorSet) {
       fontSize: 10,
       fontWeight: '700',
       color: colors.warning,
+      marginLeft: 3,
+    },
+    ghostChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      marginTop: 4,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 6,
+    },
+    ghostChipText: {
+      fontSize: 10,
+      fontWeight: '700',
+      marginLeft: 3,
+    },
+    tagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'center',
+      maxWidth: 96,
+      marginRight: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 8,
+    },
+    tagChipText: {
+      fontSize: 10,
+      fontWeight: '700',
       marginLeft: 3,
     },
     openBtn: {

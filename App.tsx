@@ -109,7 +109,16 @@ function RootGate() {
   }
 
   if (locked) {
-    return <LockScreen onUnlock={() => setLocked(false)} />;
+    return (
+      <LockScreen
+        onUnlock={() => setLocked(false)}
+        onWiped={() => {
+          // D5: data nuked by LockScreen — drop to a clean first-launch state.
+          setLocked(false);
+          setOnboardingDone(false);
+        }}
+      />
+    );
   }
 
   return <ThemedApp />;

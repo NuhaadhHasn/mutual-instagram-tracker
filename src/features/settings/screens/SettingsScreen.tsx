@@ -26,6 +26,7 @@ import {
 } from '../../../services/storage/backupCrypto';
 import { resolveUsernames } from '../../../services/usernamePrivacy';
 import { filterByRecency, RecencyScope } from '../../../services/exportCsv';
+import { TAG_PRESETS, tagColor } from '../../../shared/constants/tags';
 import { Account } from '../../../shared/types';
 import { useAppStore } from '../../../shared/store/appStore';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
@@ -63,6 +64,10 @@ export default function SettingsScreen({ navigation }: any) {
   const setBlockScreenshots = useAppStore((s) => s.setBlockScreenshots);
   const appLock = useAppStore((s) => s.appLock);
   const setAppLock = useAppStore((s) => s.setAppLock);
+  const wipeOnTamper = useAppStore((s) => s.wipeOnTamper);
+  const setWipeOnTamper = useAppStore((s) => s.setWipeOnTamper);
+  const wipeThreshold = useAppStore((s) => s.wipeThreshold);
+  const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const {
@@ -535,6 +540,72 @@ export default function SettingsScreen({ navigation }: any) {
     setWhitelist(updated);
   };
 
+  // C4: pick a private tag for a whitelisted user — preset list + "Custom…"
+  // + (when one is set) "Clear tag".
+  const handleSetTag = async (user: { username: string; category?: string }) => {
+    const options: ActionSheetOption[] = TAG_PRESETS.map((t) => ({
+      label: t,
+      value: t,
+      icon: 'pricetag-outline',
+      iconColor: tagColor(t),
+    }));
+    options.push({ label: 'Custom…', value: '__custom__', icon: 'create-outline' });
+    if (user.category) {
+      options.push({ label: 'Clear tag', value: '__clear__', destructive: true });
+    }
+    const choice = await dialog.actionSheet({
+      title: `Tag for @${user.username}`,
+      message: 'A private label, kept on this device only.',
+      options,
+    });
+    if (choice === null) return; // dismissed
+    if (choice === '__clear__') {
+      const updated = await dataStore.setWhitelistCategory(user.username, null);
+      setWhitelist(updated);
+      return;
+    }
+    if (choice === '__custom__') {
+      const custom = await dialog.prompt({
+        title: `Tag for @${user.username}`,
+        placeholder: 'e.g. gym, college, brand deal',
+        initialValue: user.category ?? '',
+        confirmLabel: 'Save',
+        icon: 'pricetag-outline',
+      });
+      if (custom === null) return; // cancelled
+      const updated = await dataStore.setWhitelistCategory(user.username, custom);
+      setWhitelist(updated);
+      return;
+    }
+    const updated = await dataStore.setWhitelistCategory(user.username, choice);
+    setWhitelist(updated);
+  };
+
+  // C4: tapping a whitelist row chooses between setting a tag and editing a note.
+  const handleManageWhitelistUser = async (user: {
+    username: string;
+    category?: string;
+    note?: string;
+  }) => {
+    const choice = await dialog.actionSheet({
+      title: `@${user.username}`,
+      options: [
+        {
+          label: user.category ? `Tag: ${user.category}` : 'Set tag',
+          value: 'tag',
+          icon: 'pricetag-outline',
+        },
+        {
+          label: user.note ? 'Edit note' : 'Add note',
+          value: 'note',
+          icon: 'create-outline',
+        },
+      ],
+    });
+    if (choice === 'tag') await handleSetTag(user);
+    else if (choice === 'note') await handleEditNote(user);
+  };
+
   const handleRemoveFromUnfollowed = async (username: string) => {
     await dataStore.removeFromUnfollowed(username);
     const updated = await dataStore.getUnfollowed();
@@ -573,6 +644,43 @@ export default function SettingsScreen({ navigation }: any) {
     }
     setAppLock(value);
     dataStore.setAppLock(value);
+    // D5: wipe-on-tamper only makes sense with the lock on. Turning the lock
+    // off disables it too, so it can't linger inert and surprise the user.
+    if (!value && wipeOnTamper) {
+      setWipeOnTamper(false);
+      dataStore.setWipeOnTamper(false);
+    }
+  };
+
+  const handleToggleWipe = async (value: boolean) => {
+    haptic.tap();
+    if (value) {
+      const ok = await dialog.confirm({
+        title: 'Erase data after failed unlocks?',
+        message: `If someone fails the unlock ${wipeThreshold} times in a row, ALL data on this device (every account, history, whitelist) is permanently erased and the app resets. Cancelling the unlock prompt never counts.`,
+        confirmLabel: 'Enable',
+        destructive: true,
+        icon: 'flame-outline',
+      });
+      if (!ok) return;
+    }
+    setWipeOnTamper(value);
+    dataStore.setWipeOnTamper(value);
+  };
+
+  const handlePickThreshold = async () => {
+    const choice = await dialog.actionSheet({
+      title: 'Erase after how many failed attempts?',
+      options: ['5', '10', '15', '20'].map((n) => ({
+        label: `${n} attempts`,
+        value: n,
+        icon: 'flame-outline',
+      })),
+    });
+    if (choice === null) return;
+    const n = parseInt(choice, 10);
+    setWipeThreshold(n);
+    dataStore.setWipeThreshold(n);
   };
 
   const handleShareApp = async () => {
@@ -938,7 +1046,7 @@ export default function SettingsScreen({ navigation }: any) {
                     delayLongPress={350}
                     onPress={() => {
                       if (wlMulti.isActive) wlMulti.toggle(user.username);
-                      else handleEditNote(user);
+                      else handleManageWhitelistUser(user);
                     }}
                     style={{ flex: 1, marginLeft: 12 }}
                   >
@@ -949,13 +1057,41 @@ export default function SettingsScreen({ navigation }: any) {
                     >
                       @{user.username}
                     </Text>
-                    {user.note ? (
-                      <Text style={styles.whitelistNote} numberOfLines={1}>
-                        {user.note}
-                      </Text>
-                    ) : (
-                      <Text style={styles.whitelistAddNote}>Add note</Text>
-                    )}
+                    <View style={styles.whitelistMetaRow}>
+                      {user.category ? (
+                        <View
+                          style={[
+                            styles.whitelistTagChip,
+                            { backgroundColor: tagColor(user.category) + '1A' },
+                          ]}
+                        >
+                          <Ionicons
+                            name="pricetag"
+                            size={10}
+                            color={tagColor(user.category)}
+                          />
+                          <Text
+                            style={[
+                              styles.whitelistTagChipText,
+                              { color: tagColor(user.category) },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {user.category}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {user.note ? (
+                        <Text
+                          style={styles.whitelistNote}
+                          numberOfLines={1}
+                        >
+                          {user.note}
+                        </Text>
+                      ) : !user.category ? (
+                        <Text style={styles.whitelistAddNote}>Tap to tag or note</Text>
+                      ) : null}
+                    </View>
                   </TouchableOpacity>
                   {!wlMulti.isActive && (
                     <TouchableOpacity
@@ -1181,6 +1317,48 @@ export default function SettingsScreen({ navigation }: any) {
             thumbColor="#fff"
           />
         </View>
+        <Separator />
+        <View style={styles.toggleRow}>
+          <View style={[styles.rowIconBg, { backgroundColor: colors.error + '15' }]}>
+            <Ionicons name="flame-outline" size={20} color={colors.error} />
+          </View>
+          <View style={styles.toggleText}>
+            <Text style={styles.rowTitle}>Erase data after failed unlocks</Text>
+            <Text style={styles.rowSubtitle}>
+              {appLock
+                ? `Wipe everything after ${wipeThreshold} wrong attempts`
+                : 'Turn on app lock first'}
+            </Text>
+          </View>
+          <Switch
+            value={wipeOnTamper && appLock}
+            onValueChange={handleToggleWipe}
+            disabled={!appLock}
+            trackColor={{ false: colors.border, true: colors.error }}
+            thumbColor="#fff"
+          />
+        </View>
+        {appLock && wipeOnTamper && (
+          <>
+            <Separator />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handlePickThreshold}
+              style={styles.toggleRow}
+            >
+              <View style={[styles.rowIconBg, { backgroundColor: colors.error + '15' }]}>
+                <Ionicons name="repeat-outline" size={20} color={colors.error} />
+              </View>
+              <View style={styles.toggleText}>
+                <Text style={styles.rowTitle}>Failed-attempt limit</Text>
+                <Text style={styles.rowSubtitle}>
+                  Erase after {wipeThreshold} wrong attempts
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </>
+        )}
       </View>
       <TouchableOpacity
         activeOpacity={0.8}
@@ -1449,15 +1627,34 @@ function makeStyles(colors: ColorSet) {
       color: colors.text,
       marginLeft: 12,
     },
+    whitelistMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      marginTop: 3,
+    },
+    whitelistTagChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      maxWidth: 140,
+      marginRight: 8,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 8,
+    },
+    whitelistTagChipText: {
+      fontSize: 11,
+      fontWeight: '700',
+      marginLeft: 3,
+    },
     whitelistNote: {
       fontSize: 12,
       color: colors.textSecondary,
-      marginTop: 2,
+      flexShrink: 1,
     },
     whitelistAddNote: {
       fontSize: 12,
       color: colors.primary,
-      marginTop: 2,
       fontWeight: '600',
     },
     unfollowedDate: {
