@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRoute } from '@react-navigation/native';
 import { useAppStore } from '../../../shared/store/appStore';
 import { openInstagramProfile } from '../../../services/openInstagramProfile';
 import { isLikelyBot } from '../../../shared/utils/botHeuristic';
@@ -99,11 +100,14 @@ const UserItem = React.memo(function UserItem({
 });
 
 export default function FansScreen({ navigation }: any) {
+  const route = useRoute<any>();
   const followerData = useAppStore((s) => s.followerData);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const exportUsers = useExportUsers();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>(
+    route.params?.initialQuery ?? '',
+  );
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const { refresh, refreshing } = useRefreshAppData();
   const insets = useSafeAreaInsets();

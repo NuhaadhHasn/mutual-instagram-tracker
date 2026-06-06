@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -31,7 +31,7 @@ import { useTheme } from '../../../shared/context/ThemeContext';
 import UserAvatar from '../../../shared/components/UserAvatar';
 import FreshnessBanner from '../../../shared/components/FreshnessBanner';
 import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDialog } from '../../../shared/context/DialogContext';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
@@ -178,9 +178,23 @@ export default function UnfollowersScreen() {
   const setUnfollowed = useAppStore((s) => s.setUnfollowed);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const dialog = useDialog();
   const exportUsers = useExportUsers();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>(
+    route.params?.initialQuery ?? '',
+  );
+
+  // Unfollowers is a (persistent) tab, so a fresh navigate-with-params won't
+  // re-run the useState initializer — apply an incoming global-search query
+  // here, then clear the param so re-opening the tab doesn't re-filter. C15c.
+  useEffect(() => {
+    const q = route.params?.initialQuery;
+    if (q != null) {
+      setSearchQuery(q);
+      navigation.setParams({ initialQuery: undefined });
+    }
+  }, [route.params?.initialQuery, navigation]);
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const [showWhitelisted, setShowWhitelisted] = useState(false);
   const [showUnfollowed, setShowUnfollowed] = useState(false);

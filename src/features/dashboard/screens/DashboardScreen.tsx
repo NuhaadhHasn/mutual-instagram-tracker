@@ -235,17 +235,30 @@ export default function DashboardScreen({ navigation }: any) {
             </Text>
             <Text style={styles.headerHint}>Tap a card to explore</Text>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => {
-              haptic.tap();
-              setShareOpen(true);
-            }}
-            hitSlop={10}
-            style={styles.headerIconBtn}
-          >
-            <Ionicons name="share-social" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                haptic.tap();
+                navigation.navigate('Search');
+              }}
+              hitSlop={10}
+              style={styles.headerIconBtn}
+            >
+              <Ionicons name="search" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                haptic.tap();
+                setShareOpen(true);
+              }}
+              hitSlop={10}
+              style={styles.headerIconBtn}
+            >
+              <Ionicons name="share-social" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -446,6 +459,11 @@ function makeStyles(colors: ColorSet) {
       fontSize: 12,
       fontWeight: '700',
       flexShrink: 1,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     headerIconBtn: {
       width: 38,

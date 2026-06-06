@@ -17,6 +17,7 @@ import HistoryScreen from './src/features/history/screens/HistoryScreen';
 import FansScreen from './src/features/fans/screens/FansScreen';
 import OnboardingScreen from './src/features/onboarding/screens/OnboardingScreen';
 import UsersListScreen from './src/features/users/UsersListScreen';
+import SearchScreen from './src/features/search/screens/SearchScreen';
 
 import { ThemeProvider, useTheme } from './src/shared/context/ThemeContext';
 import { DialogProvider } from './src/shared/context/DialogContext';
@@ -133,6 +134,7 @@ function ThemedApp() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="Tabs" component={TabsNavigator} />
+        <RootStack.Screen name="Search" component={SearchScreen} />
         <RootStack.Screen name="History" component={HistoryScreen} />
         <RootStack.Screen name="Fans" component={FansScreen} />
         <RootStack.Screen

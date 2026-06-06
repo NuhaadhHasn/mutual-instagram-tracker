@@ -50,6 +50,8 @@ export type UsersListKind =
 
 type Params = {
   kind: UsersListKind;
+  // Optional pre-filled search (e.g. when jumped to from global search, C15c).
+  initialQuery?: string;
 };
 
 type SortKey = 'username' | 'date';
@@ -235,7 +237,7 @@ export default function UsersListScreen({ navigation }: any) {
   const dialog = useDialog();
   const exportUsers = useExportUsers();
   const { refresh, refreshing } = useRefreshAppData();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(route.params.initialQuery ?? '');
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const [recency, setRecency] = useState<RecencyFilter>('all');
   const [ghostOnly, setGhostOnly] = useState(false);
