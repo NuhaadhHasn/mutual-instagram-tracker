@@ -39,6 +39,7 @@ import RecentSearches from '../../../shared/components/RecentSearches';
 import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { haptic } from '../../../shared/utils/haptics';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
+import { useDragSelect } from '../../../shared/hooks/useDragSelect';
 import { useExportUsers } from '../../../shared/hooks/useExportUsers';
 
 type SortKey = 'username' | 'date';
@@ -324,6 +325,16 @@ export default function UnfollowersScreen() {
       });
     }
   };
+
+  // Gallery-style drag-to-multi-select (C15d). PanResponder-based, no new deps.
+  const drag = useDragSelect({
+    isActive: multi.isActive,
+    selected: multi.selected,
+    selectMany: multi.selectMany,
+    data: sortedList,
+    itemHeight: ITEM_HEIGHT,
+    paddingTop: Spacing.md,
+  });
 
   const handleLongPress = (user: InstagramUser) => {
     haptic.longPress();
@@ -628,7 +639,16 @@ export default function UnfollowersScreen() {
         )}
       </View>
 
+      <View
+        ref={drag.wrapperRef}
+        onLayout={drag.onLayout}
+        style={{ flex: 1 }}
+        {...drag.panHandlers}
+      >
       <FlashList
+        ref={drag.listRef}
+        onScroll={drag.onScroll}
+        scrollEventThrottle={16}
         data={sortedList}
         keyExtractor={(item, idx) => `${item.username}-${idx}`}
         renderItem={({ item, index }) => {
@@ -677,6 +697,7 @@ export default function UnfollowersScreen() {
           </View>
         }
       />
+      </View>
     </View>
   );
 }

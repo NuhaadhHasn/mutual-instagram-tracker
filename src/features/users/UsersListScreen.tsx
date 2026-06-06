@@ -40,6 +40,7 @@ import RecentSearches from '../../shared/components/RecentSearches';
 import { useRecentSearches } from '../../shared/hooks/useRecentSearches';
 import { useRefreshAppData } from '../../shared/hooks/useRefreshAppData';
 import { useMultiSelect } from '../../shared/hooks/useMultiSelect';
+import { useDragSelect } from '../../shared/hooks/useDragSelect';
 import { useDialog } from '../../shared/context/DialogContext';
 import { useExportUsers } from '../../shared/hooks/useExportUsers';
 import { haptic } from '../../shared/utils/haptics';
@@ -312,6 +313,16 @@ export default function UsersListScreen({ navigation }: any) {
     () => new Set(unfollowed.map((u) => u.username)),
     [unfollowed],
   );
+
+  // Gallery-style drag-to-multi-select (C15d). PanResponder-based, no new deps.
+  const drag = useDragSelect({
+    isActive: multi.isActive,
+    selected: multi.selected,
+    selectMany: multi.selectMany,
+    data: sorted,
+    itemHeight: ITEM_HEIGHT,
+    paddingTop: Spacing.sm,
+  });
 
   const handleOpenProfile = (user: InstagramUser) => {
     openInstagramProfile(user.username, user.profileUrl);
@@ -606,7 +617,16 @@ export default function UsersListScreen({ navigation }: any) {
             ))}
           </View>
         ) : (
+          <View
+            ref={drag.wrapperRef}
+            onLayout={drag.onLayout}
+            style={{ flex: 1 }}
+            {...drag.panHandlers}
+          >
           <FlashList
+            ref={drag.listRef}
+            onScroll={drag.onScroll}
+            scrollEventThrottle={16}
             data={sorted}
             keyExtractor={(item, idx) => `${item.username}-${idx}`}
             renderItem={({ item, index }) => {
@@ -652,6 +672,7 @@ export default function UsersListScreen({ navigation }: any) {
               </View>
             }
           />
+          </View>
         )}
       </View>
     </View>
