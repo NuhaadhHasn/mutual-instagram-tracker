@@ -40,6 +40,7 @@ import { haptic } from '../../../shared/utils/haptics';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as notifications from '../../../services/notifications';
 import {
   BorderRadius,
   ColorSet,
@@ -68,6 +69,10 @@ export default function SettingsScreen({ navigation }: any) {
   const setWipeOnTamper = useAppStore((s) => s.setWipeOnTamper);
   const wipeThreshold = useAppStore((s) => s.wipeThreshold);
   const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
+  const storageEncrypted = useAppStore((s) => s.storageEncrypted);
+  const setStorageEncrypted = useAppStore((s) => s.setStorageEncrypted);
+  const notificationFrequency = useAppStore((s) => s.notificationFrequency);
+  const setNotificationFrequency = useAppStore((s) => s.setNotificationFrequency);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const {
@@ -681,6 +686,131 @@ export default function SettingsScreen({ navigation }: any) {
     const n = parseInt(choice, 10);
     setWipeThreshold(n);
     dataStore.setWipeThreshold(n);
+  };
+
+  // D2: encrypt-at-rest toggle. Reuses the backup busy overlay for progress.
+  const handleToggleEncryptAtRest = async (value: boolean) => {
+    haptic.tap();
+    if (backupBusy) return;
+    if (value) {
+      const ok = await dialog.confirm({
+        title: 'Encrypt data at rest?',
+        message:
+          'Your follower data, whitelist, history, and unfollowed list will be scrambled with a key held in this device’s secure keychain. This can take a few seconds.',
+        confirmLabel: 'Encrypt',
+        icon: 'lock-closed-outline',
+      });
+      if (!ok) return;
+      setBackupBusy('Encrypting your data…');
+      try {
+        await dataStore.enableEncryption();
+        setStorageEncrypted(true);
+      } catch {
+        dialog.alert({
+          title: 'Could not enable encryption',
+          message:
+            'Your device’s secure storage was unavailable, so nothing was changed.',
+          icon: 'alert-circle-outline',
+          iconColor: colors.error,
+        });
+      } finally {
+        setBackupBusy(null);
+      }
+    } else {
+      const ok = await dialog.confirm({
+        title: 'Turn off encryption?',
+        message: 'Your data will be stored unencrypted on this device.',
+        confirmLabel: 'Turn off',
+        destructive: true,
+        icon: 'lock-open-outline',
+      });
+      if (!ok) return;
+      setBackupBusy('Decrypting your data…');
+      try {
+        await dataStore.disableEncryption();
+        setStorageEncrypted(false);
+      } catch {
+        dialog.alert({
+          title: 'Could not turn off encryption',
+          message: 'Something went wrong, so your data is still encrypted.',
+          icon: 'alert-circle-outline',
+          iconColor: colors.error,
+        });
+      } finally {
+        setBackupBusy(null);
+      }
+    }
+  };
+
+  // #10: local import reminders.
+  const freqLabel = (d: number) =>
+    d === 7 ? 'weekly' : d === 14 ? 'every 2 weeks' : d === 30 ? 'monthly' : 'off';
+
+  const handleToggleReminders = async (value: boolean) => {
+    haptic.tap();
+    if (!value) {
+      setNotificationFrequency(0);
+      dataStore.setNotificationFrequency(0);
+      notifications.cancelImportReminder();
+      return;
+    }
+    if (!notifications.isAvailable()) {
+      dialog.alert({
+        title: 'Reminders unavailable',
+        message:
+          'Notifications need a development or production build of Mutual — they may not work in Expo Go.',
+        icon: 'notifications-off-outline',
+        iconColor: colors.warning,
+      });
+      return; // leave off; pref never written
+    }
+    const granted = await notifications.requestPermission();
+    if (!granted) {
+      setNotificationFrequency(0);
+      dataStore.setNotificationFrequency(0);
+      dialog.alert({
+        title: 'Notifications are off',
+        message:
+          'Allow notifications for Mutual in your device Settings, then turn this on again.',
+        icon: 'notifications-off-outline',
+        iconColor: colors.warning,
+      });
+      return;
+    }
+    const freq = notificationFrequency > 0 ? notificationFrequency : 7; // default Weekly
+    setNotificationFrequency(freq);
+    await dataStore.setNotificationFrequency(freq);
+    const hist = useAppStore.getState().history;
+    const lastImportAt = hist.length ? hist[hist.length - 1].date : null;
+    notifications.scheduleImportReminder(freq, lastImportAt);
+  };
+
+  const handlePickFrequency = async () => {
+    const choice = await dialog.actionSheet({
+      title: 'Remind me to import every…',
+      options: [
+        { label: 'Weekly', value: '7', icon: 'notifications-outline' },
+        { label: 'Every 2 weeks', value: '14', icon: 'notifications-outline' },
+        { label: 'Monthly', value: '30', icon: 'notifications-outline' },
+        {
+          label: 'Off',
+          value: '0',
+          icon: 'notifications-off-outline',
+          destructive: true,
+        },
+      ],
+    });
+    if (choice === null) return;
+    const n = parseInt(choice, 10);
+    setNotificationFrequency(n);
+    await dataStore.setNotificationFrequency(n);
+    if (n <= 0) {
+      notifications.cancelImportReminder();
+      return;
+    }
+    const hist = useAppStore.getState().history;
+    const lastImportAt = hist.length ? hist[hist.length - 1].date : null;
+    notifications.scheduleImportReminder(n, lastImportAt);
   };
 
   const handleShareApp = async () => {
@@ -1353,6 +1483,72 @@ export default function SettingsScreen({ navigation }: any) {
                 <Text style={styles.rowTitle}>Failed-attempt limit</Text>
                 <Text style={styles.rowSubtitle}>
                   Erase after {wipeThreshold} wrong attempts
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </>
+        )}
+        <Separator />
+        <View style={styles.toggleRow}>
+          <View style={[styles.rowIconBg, { backgroundColor: colors.success + '15' }]}>
+            <Ionicons name="lock-closed" size={20} color={colors.success} />
+          </View>
+          <View style={styles.toggleText}>
+            <Text style={styles.rowTitle}>Encrypt data at rest</Text>
+            <Text
+              style={[
+                styles.rowSubtitle,
+                storageEncrypted && { color: colors.success },
+              ]}
+            >
+              {storageEncrypted
+                ? 'Encrypted at rest ✓'
+                : 'Scramble stored data with a device key'}
+            </Text>
+          </View>
+          <Switch
+            value={storageEncrypted}
+            onValueChange={handleToggleEncryptAtRest}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+        <Separator />
+        <View style={styles.toggleRow}>
+          <View style={[styles.rowIconBg, { backgroundColor: colors.info + '15' }]}>
+            <Ionicons name="notifications-outline" size={20} color={colors.info} />
+          </View>
+          <View style={styles.toggleText}>
+            <Text style={styles.rowTitle}>Import reminders</Text>
+            <Text style={styles.rowSubtitle}>
+              {notificationFrequency > 0
+                ? `Remind me ${freqLabel(notificationFrequency)} to re-import`
+                : 'Nudge me to re-import my data'}
+            </Text>
+          </View>
+          <Switch
+            value={notificationFrequency > 0}
+            onValueChange={handleToggleReminders}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+        {notificationFrequency > 0 && (
+          <>
+            <Separator />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handlePickFrequency}
+              style={styles.toggleRow}
+            >
+              <View style={[styles.rowIconBg, { backgroundColor: colors.info + '15' }]}>
+                <Ionicons name="repeat-outline" size={20} color={colors.info} />
+              </View>
+              <View style={styles.toggleText}>
+                <Text style={styles.rowTitle}>Reminder frequency</Text>
+                <Text style={styles.rowSubtitle}>
+                  {freqLabel(notificationFrequency)}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />

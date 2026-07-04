@@ -16,7 +16,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.nuhaadh.mutual",
       "infoPlist": {
-        "LSApplicationQueriesSchemes": ["instagram"],
+        "LSApplicationQueriesSchemes": [
+          "instagram"
+        ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false
         }
@@ -29,7 +31,9 @@
       },
       "package": "com.nuhaadh.mutual",
       "predictiveBackGestureEnabled": false,
-      "blockedPermissions": ["android.permission.INTERNET"]
+      "blockedPermissions": [
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,7 +45,14 @@
     },
     "plugins": [
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#E1306C"
+        }
+      ]
     ]
   }
 }

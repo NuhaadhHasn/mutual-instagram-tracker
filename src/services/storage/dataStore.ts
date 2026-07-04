@@ -6,6 +6,20 @@ import {
   UnfollowedUser,
   WhitelistUser,
 } from '../../shared/types';
+import {
+  decryptWithKey,
+  decryptWithKeyAsync,
+  encryptWithKey,
+  encryptWithKeyAsync,
+  isAtRestEnvelope,
+} from './atRestCrypto';
+import {
+  clearCachedMasterKey,
+  createAndStoreMasterKey,
+  deleteMasterKey,
+  getCachedMasterKey,
+  loadMasterKey,
+} from './masterKey';
 
 // Per-account keys (namespaced by current account id — see keyFor) + global,
 // device-level keys (accounts registry, current pointer, prefs) that are NOT
@@ -25,6 +39,8 @@ const KEYS = {
   WIPE_THRESHOLD: '@instagram_tracker:wipe_threshold',
   FAILED_UNLOCKS: '@instagram_tracker:failed_unlocks',
   RECENT_SEARCHES: '@instagram_tracker:recent_searches',
+  STORAGE_ENCRYPTED: '@instagram_tracker:storage_encrypted',
+  NOTIFICATION_FREQUENCY: '@instagram_tracker:notification_frequency',
 };
 
 // How many recent search terms to keep (#11).
@@ -39,6 +55,10 @@ const DEFAULT_WIPE_THRESHOLD = 10;
 const MIN_WIPE_THRESHOLD = 3;
 const MAX_WIPE_THRESHOLD = 20;
 
+// Notification reminder frequency in days (#10). 0 = off.
+const DEFAULT_NOTIFICATION_FREQUENCY = 0;
+const ALLOWED_NOTIFICATION_FREQUENCIES = [0, 7, 14, 30];
+
 // The first/default account reuses the original un-suffixed keys, so data saved
 // before multi-account existed stays exactly where it was (zero byte-migration).
 // Every other account suffixes its keys with `:<id>`.
@@ -48,9 +68,25 @@ function keyFor(base: string, accountId: string): string {
   return accountId === DEFAULT_ACCOUNT_ID ? base : `${base}:${accountId}`;
 }
 
+// Per-account keys holding sensitive user data — the only keys D2 encrypts.
+const SENSITIVE_BASE_KEYS = [
+  KEYS.FOLLOWER_DATA,
+  KEYS.WHITELIST,
+  KEYS.HISTORY,
+  KEYS.UNFOLLOWED,
+];
+
+// follower_data is the large blob (can be several MB) — use the async,
+// yield-first crypto variants for it so a busy overlay can paint first.
+const isLargeKey = (base: string): boolean => base === KEYS.FOLLOWER_DATA;
+
 export class DataStore {
   // Cached active account id so the (synchronous-feeling) key builder is cheap.
   private currentAccountId: string | null = null;
+
+  // D2: whether sensitive at-rest data is currently encrypted. Mirrors the
+  // persisted STORAGE_ENCRYPTED flag; set once at hydration (initEncryptionState).
+  private storageEncryptedFlag = false;
 
   /**
    * Resolve (and cache) the active account id, seeding the accounts registry on
@@ -67,6 +103,164 @@ export class DataStore {
   /** Build the storage key for `base` under the active account. */
   private async k(base: string): Promise<string> {
     return keyFor(base, await this.ensureCurrentAccountId());
+  }
+
+  // ---- D2: encryption-at-rest -----------------------------------------------
+
+  /** Persisted flag: are the sensitive per-account keys encrypted at rest? */
+  async getStorageEncrypted(): Promise<boolean> {
+    try {
+      return (await AsyncStorage.getItem(KEYS.STORAGE_ENCRYPTED)) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  /** Set the encryption flag (persisted + in-memory). */
+  async setStorageEncrypted(enabled: boolean): Promise<void> {
+    this.storageEncryptedFlag = enabled;
+    try {
+      await AsyncStorage.setItem(
+        KEYS.STORAGE_ENCRYPTED,
+        enabled ? 'true' : 'false',
+      );
+    } catch (error) {
+      console.error('Error saving encryption flag:', error);
+    }
+  }
+
+  /**
+   * Load encryption state at hydration: read the flag AND load the master key
+   * into the in-memory cache. Must run before any sensitive get* so reads can
+   * decrypt. Loading the key even when the flag is off lets reads recover from
+   * an interrupted disable (envelopes still on disk).
+   */
+  async initEncryptionState(): Promise<void> {
+    this.storageEncryptedFlag = await this.getStorageEncrypted();
+    await loadMasterKey();
+  }
+
+  /**
+   * Serialize + (optionally) encrypt a value, then persist it. Sensitive keys
+   * route through here. When encryption is on and the key is cached, the stored
+   * form is JSON.stringify(envelope); otherwise plain JSON (back-compat).
+   */
+  private async writeValue(
+    fullKey: string,
+    obj: unknown,
+    large = false,
+  ): Promise<void> {
+    const json = JSON.stringify(obj);
+    const key = this.storageEncryptedFlag ? getCachedMasterKey() : null;
+    if (key) {
+      const env = large
+        ? await encryptWithKeyAsync(json, key)
+        : encryptWithKey(json, key);
+      await AsyncStorage.setItem(fullKey, JSON.stringify(env));
+    } else {
+      await AsyncStorage.setItem(fullKey, json);
+    }
+  }
+
+  /**
+   * Read + parse a value, transparently decrypting if it's an at-rest envelope.
+   * Plaintext (non-envelope) values still read fine (back-compat / mixed state).
+   * Throws if an envelope is present but no key is cached — callers' try/catch
+   * turns that into their safe default (fail-closed, never returns garbage).
+   */
+  private async readValue<T>(fullKey: string, large = false): Promise<T | null> {
+    const raw = await AsyncStorage.getItem(fullKey);
+    if (raw == null) return null;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (isAtRestEnvelope(parsed)) {
+      const key = getCachedMasterKey();
+      if (!key) {
+        throw new Error('Encrypted data present but master key unavailable');
+      }
+      const json = large
+        ? await decryptWithKeyAsync(parsed, key)
+        : decryptWithKey(parsed, key);
+      return JSON.parse(json) as T;
+    }
+    return parsed as T;
+  }
+
+  /**
+   * Enable at-rest encryption: create+store a master key, then re-encrypt every
+   * account's sensitive slices that are still plaintext. Order is key-first,
+   * flag-last so an interruption leaves already-encrypted values readable (reads
+   * decrypt whenever the key exists, independent of the flag). Idempotent.
+   */
+  async enableEncryption(): Promise<void> {
+    // Reuse an existing key if one is present — NEVER mint a new key over an
+    // old one. Overwriting would orphan any values already encrypted under the
+    // previous key (e.g. after an interrupted enable), permanently losing them.
+    const key =
+      getCachedMasterKey() ??
+      (await loadMasterKey()) ??
+      (await createAndStoreMasterKey());
+    const accounts = await this.getAccounts();
+    for (const acc of accounts) {
+      for (const base of SENSITIVE_BASE_KEYS) {
+        const fullKey = keyFor(base, acc.id);
+        const raw = await AsyncStorage.getItem(fullKey);
+        if (raw == null) continue;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+        if (isAtRestEnvelope(parsed)) continue; // already encrypted
+        const env = isLargeKey(base)
+          ? await encryptWithKeyAsync(raw, key)
+          : encryptWithKey(raw, key);
+        await AsyncStorage.setItem(fullKey, JSON.stringify(env));
+      }
+    }
+    await this.setStorageEncrypted(true); // flag + persist LAST
+  }
+
+  /**
+   * Disable at-rest encryption: clear the flag first (so concurrent writes go
+   * out plaintext), decrypt every slice back to plaintext, then delete the key
+   * LAST — never while ciphertext remains. Aborts before the key delete if any
+   * decrypt fails, so data stays recoverable.
+   */
+  async disableEncryption(): Promise<void> {
+    // Fetch the key BEFORE clearing the flag. If it's unavailable we must not
+    // half-disable (flag off while ciphertext remains on disk), which could let
+    // a later empty read overwrite encrypted data — refuse and stay encrypted.
+    const key = getCachedMasterKey() ?? (await loadMasterKey());
+    if (!key) {
+      throw new Error('Cannot disable encryption: master key unavailable');
+    }
+    await this.setStorageEncrypted(false); // now safe to clear flag
+    const accounts = await this.getAccounts();
+    for (const acc of accounts) {
+      for (const base of SENSITIVE_BASE_KEYS) {
+        const fullKey = keyFor(base, acc.id);
+        const raw = await AsyncStorage.getItem(fullKey);
+        if (raw == null) continue;
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+        if (!isAtRestEnvelope(parsed)) continue; // already plaintext
+        const plaintext = isLargeKey(base)
+          ? await decryptWithKeyAsync(parsed, key)
+          : decryptWithKey(parsed, key);
+        await AsyncStorage.setItem(fullKey, plaintext);
+      }
+    }
+    await deleteMasterKey(); // LAST — only after everything is plaintext
   }
 
   // ---- Accounts (C8) --------------------------------------------------------
@@ -168,7 +362,7 @@ export class DataStore {
    */
   async saveFollowerData(data: FollowerData): Promise<void> {
     try {
-      await AsyncStorage.setItem(await this.k(KEYS.FOLLOWER_DATA), JSON.stringify(data));
+      await this.writeValue(await this.k(KEYS.FOLLOWER_DATA), data, true);
     } catch (error) {
       console.error('Error saving follower data:', error);
       throw error;
@@ -183,12 +377,11 @@ export class DataStore {
   async getFollowerData(): Promise<FollowerData | null> {
     try {
       const key = await this.k(KEYS.FOLLOWER_DATA);
-      const raw = await AsyncStorage.getItem(key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw) as FollowerData;
+      const parsed = await this.readValue<FollowerData>(key, true);
+      if (!parsed) return null;
       const migrated = migrateFollowerData(parsed);
       if (migrated !== parsed) {
-        await AsyncStorage.setItem(key, JSON.stringify(migrated));
+        await this.writeValue(key, migrated, true);
       }
       return migrated;
     } catch (error) {
@@ -202,7 +395,7 @@ export class DataStore {
    */
   async saveWhitelist(whitelist: WhitelistUser[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(await this.k(KEYS.WHITELIST), JSON.stringify(whitelist));
+      await this.writeValue(await this.k(KEYS.WHITELIST), whitelist);
     } catch (error) {
       console.error('Error saving whitelist:', error);
       throw error;
@@ -214,8 +407,8 @@ export class DataStore {
    */
   async getWhitelist(): Promise<WhitelistUser[]> {
     try {
-      const data = await AsyncStorage.getItem(await this.k(KEYS.WHITELIST));
-      return data ? JSON.parse(data) : [];
+      const data = await this.readValue<WhitelistUser[]>(await this.k(KEYS.WHITELIST));
+      return data ?? [];
     } catch (error) {
       console.error('Error getting whitelist:', error);
       return [];
@@ -320,7 +513,7 @@ export class DataStore {
       const history = await this.getHistory();
       history.push(snapshot);
       const trimmed = history.slice(-50);
-      await AsyncStorage.setItem(await this.k(KEYS.HISTORY), JSON.stringify(trimmed));
+      await this.writeValue(await this.k(KEYS.HISTORY), trimmed);
     } catch (error) {
       console.error('Error saving snapshot:', error);
       throw error;
@@ -332,8 +525,8 @@ export class DataStore {
    */
   async getHistory(): Promise<HistoricalSnapshot[]> {
     try {
-      const data = await AsyncStorage.getItem(await this.k(KEYS.HISTORY));
-      return data ? JSON.parse(data) : [];
+      const data = await this.readValue<HistoricalSnapshot[]>(await this.k(KEYS.HISTORY));
+      return data ?? [];
     } catch (error) {
       console.error('Error getting history:', error);
       return [];
@@ -357,7 +550,7 @@ export class DataStore {
    */
   async saveUnfollowed(list: UnfollowedUser[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(await this.k(KEYS.UNFOLLOWED), JSON.stringify(list));
+      await this.writeValue(await this.k(KEYS.UNFOLLOWED), list);
     } catch (error) {
       console.error('Error saving unfollowed:', error);
       throw error;
@@ -366,8 +559,8 @@ export class DataStore {
 
   async getUnfollowed(): Promise<UnfollowedUser[]> {
     try {
-      const data = await AsyncStorage.getItem(await this.k(KEYS.UNFOLLOWED));
-      return data ? JSON.parse(data) : [];
+      const data = await this.readValue<UnfollowedUser[]>(await this.k(KEYS.UNFOLLOWED));
+      return data ?? [];
     } catch (error) {
       console.error('Error getting unfollowed:', error);
       return [];
@@ -593,6 +786,33 @@ export class DataStore {
     }
   }
 
+  // ---- Notification reminders (#10) -----------------------------------------
+
+  /** Reminder frequency in days (global). 0 = off. Validated against presets. */
+  async getNotificationFrequency(): Promise<number> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.NOTIFICATION_FREQUENCY);
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isFinite(n) && ALLOWED_NOTIFICATION_FREQUENCIES.includes(n)) {
+        return n;
+      }
+    } catch {
+      // fall through to default
+    }
+    return DEFAULT_NOTIFICATION_FREQUENCY;
+  }
+
+  async setNotificationFrequency(days: number): Promise<void> {
+    try {
+      const n = ALLOWED_NOTIFICATION_FREQUENCIES.includes(days)
+        ? days
+        : DEFAULT_NOTIFICATION_FREQUENCY;
+      await AsyncStorage.setItem(KEYS.NOTIFICATION_FREQUENCY, String(n));
+    } catch (error) {
+      console.error('Error saving notification frequency:', error);
+    }
+  }
+
   /**
    * Full nuclear reset (D5 wipe-on-tamper). Removes EVERY key this app owns —
    * all accounts' data, the accounts registry, every device pref, AND the
@@ -604,6 +824,10 @@ export class DataStore {
       const keys = await AsyncStorage.getAllKeys();
       const ours = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
       await Promise.all(ours.map((k) => AsyncStorage.removeItem(k)));
+      // D2: also delete the at-rest master key from secure-store + clear caches.
+      await deleteMasterKey();
+      clearCachedMasterKey();
+      this.storageEncryptedFlag = false;
       // Drop the cached account id so the next read re-seeds the default.
       this.currentAccountId = null;
     } catch (error) {

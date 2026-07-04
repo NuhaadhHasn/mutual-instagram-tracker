@@ -75,6 +75,11 @@ export default function ImportScreen({ navigation }: any) {
       await dataStore.saveSnapshot(snapshot);
       setHistory(await dataStore.getHistory());
 
+      // #10: the new snapshot is the fresh reminder anchor — reschedule.
+      import('../../../services/notifications')
+        .then((n) => n.rescheduleFromState())
+        .catch(() => {});
+
       haptic.success();
       setSuccessData(data);
 

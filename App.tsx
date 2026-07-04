@@ -87,6 +87,11 @@ function RootGate() {
         ) {
           setLocked(true);
         }
+        // #10: re-check + reschedule reminders on every foreground (cheap —
+        // cancel+replace under one id; no-ops when notifications are unavailable).
+        import('./src/services/notifications')
+          .then((n) => n.rescheduleFromState())
+          .catch(() => {});
       }
     });
     return () => sub.remove();
@@ -117,6 +122,10 @@ function RootGate() {
           // D5: data nuked by LockScreen — drop to a clean first-launch state.
           setLocked(false);
           setOnboardingDone(false);
+          // #10: cancel any scheduled reminder so it doesn't outlive the wipe.
+          import('./src/services/notifications')
+            .then((n) => n.cancelImportReminder())
+            .catch(() => {});
         }}
       />
     );

@@ -12,6 +12,8 @@ export function useAppInit() {
   const setAppLock = useAppStore((s) => s.setAppLock);
   const setWipeOnTamper = useAppStore((s) => s.setWipeOnTamper);
   const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
+  const setStorageEncrypted = useAppStore((s) => s.setStorageEncrypted);
+  const setNotificationFrequency = useAppStore((s) => s.setNotificationFrequency);
   const setRecentSearches = useAppStore((s) => s.setRecentSearches);
   const setAccounts = useAppStore((s) => s.setAccounts);
   const setCurrentAccountId = useAppStore((s) => s.setCurrentAccountId);
@@ -21,8 +23,24 @@ export function useAppInit() {
     // the right namespace, and expose the registry to the UI (C8).
     dataStore
       .getCurrentAccountId()
-      .then((currentAccountId) =>
-        Promise.all([
+      .then(async (currentAccountId) => {
+        // D2: load the encryption flag + master key BEFORE any sensitive read,
+        // so getFollowerData/getWhitelist/etc. can decrypt during hydration.
+        await dataStore.initEncryptionState();
+        const [
+          data,
+          whitelist,
+          unfollowed,
+          history,
+          blockScreenshots,
+          appLock,
+          wipeOnTamper,
+          wipeThreshold,
+          storageEncrypted,
+          notificationFrequency,
+          recentSearches,
+          accounts,
+        ] = await Promise.all([
           dataStore.getFollowerData(),
           dataStore.getWhitelist(),
           dataStore.getUnfollowed(),
@@ -31,40 +49,39 @@ export function useAppInit() {
           dataStore.getAppLock(),
           dataStore.getWipeOnTamper(),
           dataStore.getWipeThreshold(),
+          dataStore.getStorageEncrypted(),
+          dataStore.getNotificationFrequency(),
           dataStore.getRecentSearches(),
           dataStore.getAccounts(),
-        ]).then(
-          ([
-            data,
-            whitelist,
-            unfollowed,
-            history,
-            blockScreenshots,
-            appLock,
-            wipeOnTamper,
-            wipeThreshold,
-            recentSearches,
-            accounts,
-          ]) => {
-            if (data) setFollowerData(data);
-            setWhitelist(whitelist);
-            setUnfollowed(unfollowed);
-            setHistory(history);
-            setBlockScreenshots(blockScreenshots);
-            setAppLock(appLock);
-            setWipeOnTamper(wipeOnTamper);
-            setWipeThreshold(wipeThreshold);
-            setRecentSearches(recentSearches);
-            setAccounts(accounts);
-            setCurrentAccountId(currentAccountId);
-          },
-        ),
-      )
+        ]);
+        if (data) setFollowerData(data);
+        setWhitelist(whitelist);
+        setUnfollowed(unfollowed);
+        setHistory(history);
+        setBlockScreenshots(blockScreenshots);
+        setAppLock(appLock);
+        setWipeOnTamper(wipeOnTamper);
+        setWipeThreshold(wipeThreshold);
+        setStorageEncrypted(storageEncrypted);
+        setNotificationFrequency(notificationFrequency);
+        setRecentSearches(recentSearches);
+        setAccounts(accounts);
+        setCurrentAccountId(currentAccountId);
+      })
       .catch((err) => {
         console.error('App init failed', err);
       })
       .finally(() => {
         setHydrating(false);
+        // #10: configure the foreground handler + (re)schedule local reminders
+        // once hydration is done. Lazy-imported so the native module stays off
+        // the critical path; rescheduleFromState re-reads pref + history itself.
+        import('../../services/notifications')
+          .then((n) => {
+            n.configureForegroundHandler();
+            return n.rescheduleFromState();
+          })
+          .catch(() => {});
       });
   }, [
     setFollowerData,
@@ -76,6 +93,8 @@ export function useAppInit() {
     setAppLock,
     setWipeOnTamper,
     setWipeThreshold,
+    setStorageEncrypted,
+    setNotificationFrequency,
     setRecentSearches,
     setAccounts,
     setCurrentAccountId,

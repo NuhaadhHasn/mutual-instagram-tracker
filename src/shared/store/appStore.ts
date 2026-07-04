@@ -21,6 +21,10 @@ interface AppState {
   // Wipe-on-tamper (D5)
   wipeOnTamper: boolean;
   wipeThreshold: number;
+  // At-rest encryption (D2)
+  storageEncrypted: boolean;
+  // Local notification reminder frequency in days; 0 = off (#10)
+  notificationFrequency: number;
   // Recent search terms (#11)
   recentSearches: string[];
   // Multi-account (C8)
@@ -39,6 +43,8 @@ interface AppState {
   setAppLock: (enabled: boolean) => void;
   setWipeOnTamper: (enabled: boolean) => void;
   setWipeThreshold: (n: number) => void;
+  setStorageEncrypted: (enabled: boolean) => void;
+  setNotificationFrequency: (days: number) => void;
   setRecentSearches: (searches: string[]) => void;
   setAccounts: (accounts: Account[]) => void;
   setCurrentAccountId: (id: string | null) => void;
@@ -58,6 +64,8 @@ export const useAppStore = create<AppState>((set) => ({
   appLock: false,
   wipeOnTamper: false,
   wipeThreshold: 10,
+  storageEncrypted: false,
+  notificationFrequency: 0,
   recentSearches: [],
   accounts: [],
   currentAccountId: null,
@@ -74,6 +82,9 @@ export const useAppStore = create<AppState>((set) => ({
   setAppLock: (appLock) => set({ appLock }),
   setWipeOnTamper: (wipeOnTamper) => set({ wipeOnTamper }),
   setWipeThreshold: (wipeThreshold) => set({ wipeThreshold }),
+  setStorageEncrypted: (storageEncrypted) => set({ storageEncrypted }),
+  setNotificationFrequency: (notificationFrequency) =>
+    set({ notificationFrequency }),
   setRecentSearches: (recentSearches) => set({ recentSearches }),
   setAccounts: (accounts) => set({ accounts }),
   setCurrentAccountId: (currentAccountId) => set({ currentAccountId }),
