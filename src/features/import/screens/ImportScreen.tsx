@@ -223,7 +223,7 @@ export default function ImportScreen({ navigation }: any) {
   );
 }
 
-function SuccessModal({
+const SuccessModal = React.memo(function SuccessModal({
   data,
   previousSnapshot,
   onClose,
@@ -384,7 +384,7 @@ function SuccessModal({
       </View>
     </Modal>
   );
-}
+});
 
 function makeStyles(colors: ColorSet) {
   return StyleSheet.create({

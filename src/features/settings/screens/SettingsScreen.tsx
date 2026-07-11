@@ -51,6 +51,92 @@ import {
 } from '../../../shared/constants/theme';
 import { useTheme, ThemeMode } from '../../../shared/context/ThemeContext';
 
+type Styles = ReturnType<typeof makeStyles>;
+
+// Module-scope + memoized (were inline → new component identity every render →
+// React remounted every row; Settings re-renders on each toggle). They read the
+// theme via the hook internally so the ~30 call sites stay unchanged. C15e item 1.
+const SettingRow = React.memo(function SettingRow({
+  icon,
+  iconBg,
+  iconColor,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: any;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  subtitle?: string;
+  onPress?: () => void;
+  isLast?: boolean;
+}) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const inner = (
+    <View style={styles.row}>
+      <View style={[styles.rowIconBg, { backgroundColor: iconBg }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
+      </View>
+      {onPress && (
+        <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+      )}
+    </View>
+  );
+  return onPress ? (
+    <TouchableOpacity activeOpacity={0.6} onPress={onPress}>
+      {inner}
+    </TouchableOpacity>
+  ) : (
+    inner
+  );
+});
+
+const Separator = React.memo(function Separator() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return <View style={styles.separator} />;
+});
+
+const ThemeSegment = React.memo(function ThemeSegment({
+  option,
+}: {
+  option: ThemeMode;
+}) {
+  const { colors, mode, setMode } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const active = mode === option;
+  const iconName =
+    option === 'light' ? 'sunny' : option === 'dark' ? 'moon' : 'phone-portrait';
+  const label = option[0].toUpperCase() + option.slice(1);
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => setMode(option)}
+      style={[styles.segment, active && { backgroundColor: colors.primary }]}
+    >
+      <Ionicons
+        name={iconName as any}
+        size={16}
+        color={active ? '#fff' : colors.textSecondary}
+      />
+      <Text
+        style={[
+          styles.segmentText,
+          { color: active ? '#fff' : colors.textSecondary },
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
 export default function SettingsScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const history = useAppStore((s) => s.history);
@@ -85,7 +171,7 @@ export default function SettingsScreen({ navigation }: any) {
   } = useAccounts();
   const { refresh, refreshing } = useRefreshAppData();
   const insets = useSafeAreaInsets();
-  const { colors, isDark, mode, setMode } = useTheme();
+  const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
 
   const hasData = !!followerData;
@@ -823,78 +909,6 @@ export default function SettingsScreen({ navigation }: any) {
     } catch {
       // User dismissed the share sheet, or it's unavailable — ignore.
     }
-  };
-
-  const SettingRow = ({
-    icon,
-    iconBg,
-    iconColor,
-    title,
-    subtitle,
-    onPress,
-  }: {
-    icon: any;
-    iconBg: string;
-    iconColor: string;
-    title: string;
-    subtitle?: string;
-    onPress?: () => void;
-    isLast?: boolean;
-  }) => {
-    const inner = (
-      <View style={styles.row}>
-        <View style={[styles.rowIconBg, { backgroundColor: iconBg }]}>
-          <Ionicons name={icon} size={18} color={iconColor} />
-        </View>
-        <View style={styles.rowText}>
-          <Text style={styles.rowTitle}>{title}</Text>
-          {subtitle && <Text style={styles.rowSubtitle}>{subtitle}</Text>}
-        </View>
-        {onPress && (
-          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-        )}
-      </View>
-    );
-    return onPress ? (
-      <TouchableOpacity activeOpacity={0.6} onPress={onPress}>
-        {inner}
-      </TouchableOpacity>
-    ) : (
-      inner
-    );
-  };
-
-  const Separator = () => <View style={styles.separator} />;
-
-  const ThemeSegment = ({ option }: { option: ThemeMode }) => {
-    const active = mode === option;
-    const iconName =
-      option === 'light' ? 'sunny' : option === 'dark' ? 'moon' : 'phone-portrait';
-    const label = option[0].toUpperCase() + option.slice(1);
-    return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => setMode(option)}
-        style={[
-          styles.segment,
-          active && { backgroundColor: colors.primary },
-        ]}
-      >
-        <Ionicons
-          name={iconName as any}
-          size={16}
-          color={active ? '#fff' : colors.textSecondary}
-        />
-        <Text
-          style={[
-            styles.segmentText,
-            { color: active ? '#fff' : colors.textSecondary },
-          ]}
-        >
-          {label}
-        </Text>
-      </TouchableOpacity>
-    );
   };
 
   return (

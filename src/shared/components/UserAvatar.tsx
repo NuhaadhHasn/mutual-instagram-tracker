@@ -21,6 +21,14 @@ export default function UserAvatar({ username, size = 44 }: UserAvatarProps) {
   const colorIndex =
     safeUsername.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) %
     AVATAR_COLORS.length;
+  // Instagram handles very often start with "_" or "." — using the literal first
+  // char rendered a lone "_" in the circle for most rows. Prefer the first
+  // alphanumeric character, falling back to the first char, then "?".
+  const initial = (
+    safeUsername.match(/[a-z0-9]/i)?.[0] ??
+    safeUsername[0] ??
+    '?'
+  ).toUpperCase();
 
   return (
     <View
@@ -40,7 +48,7 @@ export default function UserAvatar({ username, size = 44 }: UserAvatarProps) {
           fontWeight: 'bold',
         }}
       >
-        {safeUsername[0].toUpperCase()}
+        {initial}
       </Text>
     </View>
   );

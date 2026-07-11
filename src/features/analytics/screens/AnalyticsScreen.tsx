@@ -90,6 +90,47 @@ function generateInsights(stats: AnalyticsStats): Insight[] {
   return insights;
 }
 
+type Styles = ReturnType<typeof makeStyles>;
+
+// Module-scope + memoized (were inline → new component identity every render →
+// React remounted the subtree). styles passed as a prop. C15e item 1.
+const InsightCard = React.memo(function InsightCard({
+  icon,
+  text,
+  color,
+  bg,
+  styles,
+}: Insight & { styles: Styles }) {
+  return (
+    <View
+      style={[styles.insightCard, { backgroundColor: bg, borderLeftColor: color }]}
+    >
+      <Ionicons name={icon} size={22} color={color} />
+      <Text style={styles.insightText}>{text}</Text>
+    </View>
+  );
+});
+
+const LegendItem = React.memo(function LegendItem({
+  color,
+  label,
+  count,
+  styles,
+}: {
+  color: string;
+  label: string;
+  count: number;
+  styles: Styles;
+}) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendLabel}>{label}</Text>
+      <Text style={styles.legendCount}>{count.toLocaleString()}</Text>
+    </View>
+  );
+});
+
 export default function AnalyticsScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const history = useAppStore((s) => s.history);
@@ -101,31 +142,6 @@ export default function AnalyticsScreen({ navigation }: any) {
 
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
   const shortGradient = isDark ? DarkGradients.primaryShort : Gradients.primaryShort;
-
-  const InsightCard = ({ icon, text, color, bg }: Insight) => (
-    <View
-      style={[styles.insightCard, { backgroundColor: bg, borderLeftColor: color }]}
-    >
-      <Ionicons name={icon} size={22} color={color} />
-      <Text style={styles.insightText}>{text}</Text>
-    </View>
-  );
-
-  const LegendItem = ({
-    color,
-    label,
-    count,
-  }: {
-    color: string;
-    label: string;
-    count: number;
-  }) => (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendLabel}>{label}</Text>
-      <Text style={styles.legendCount}>{count.toLocaleString()}</Text>
-    </View>
-  );
 
   if (isHydrating && !followerData) {
     return (
@@ -273,16 +289,19 @@ export default function AnalyticsScreen({ navigation }: any) {
               color={SEGMENT_COLORS.mutual}
               label="Mutual"
               count={stats.mutualFollows}
+              styles={styles}
             />
             <LegendItem
               color={SEGMENT_COLORS.unfollowers}
               label="Unfollowers"
               count={stats.unfollowersCount}
+              styles={styles}
             />
             <LegendItem
               color={SEGMENT_COLORS.fans}
               label="Fans"
               count={stats.fansCount}
+              styles={styles}
             />
           </View>
         </View>
@@ -331,7 +350,7 @@ export default function AnalyticsScreen({ navigation }: any) {
           <View style={styles.insightsBlock}>
             <Text style={styles.sectionTitle}>Insights</Text>
             {insights.map((it, idx) => (
-              <InsightCard key={idx} {...it} />
+              <InsightCard key={idx} {...it} styles={styles} />
             ))}
           </View>
           </AnimatedFadeSlide>

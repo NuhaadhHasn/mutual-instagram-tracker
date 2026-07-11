@@ -274,14 +274,20 @@ export default function HistoryScreen({ navigation }: any) {
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+const LegendDot = React.memo(function LegendDot({
+  color,
+  label,
+}: {
+  color: string;
+  label: string;
+}) {
   return (
     <View style={legendDotStyles.row}>
       <View style={[legendDotStyles.dot, { backgroundColor: color }]} />
       <Text style={[legendDotStyles.label, { color }]}>{label}</Text>
     </View>
   );
-}
+});
 
 const legendDotStyles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', marginRight: Spacing.lg },
@@ -289,7 +295,7 @@ const legendDotStyles = StyleSheet.create({
   label: { fontSize: 12, fontWeight: '600' },
 });
 
-function ComparisonCard({
+const ComparisonCard = React.memo(function ComparisonCard({
   current,
   previous,
   colors,
@@ -337,11 +343,11 @@ function ComparisonCard({
       </View>
     </View>
   );
-}
+});
 
 const MAX_CHANGE_NAMES = 30;
 
-function ChangeNames({
+const ChangeNames = React.memo(function ChangeNames({
   names,
   colors,
   styles,
@@ -366,9 +372,9 @@ function ChangeNames({
       )}
     </View>
   );
-}
+});
 
-function ChangeCard({
+const ChangeCard = React.memo(function ChangeCard({
   gained,
   lost,
   colors,
@@ -403,9 +409,9 @@ function ChangeCard({
       )}
     </View>
   );
-}
+});
 
-function DiffItem({
+const DiffItem = React.memo(function DiffItem({
   label,
   diff,
   positiveIsGood,
@@ -436,9 +442,9 @@ function DiffItem({
       <Text style={styles.diffLabel}>{label}</Text>
     </View>
   );
-}
+});
 
-function SnapshotItem({
+const SnapshotItem = React.memo(function SnapshotItem({
   snapshot,
   isLatest,
   colors,
@@ -479,7 +485,7 @@ function SnapshotItem({
       </View>
     </View>
   );
-}
+});
 
 function formatChartLabel(timestamp: number): string {
   const d = new Date(timestamp);

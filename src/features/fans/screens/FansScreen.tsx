@@ -32,6 +32,7 @@ import { useRefreshAppData } from '../../../shared/hooks/useRefreshAppData';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
 import RecentSearches from '../../../shared/components/RecentSearches';
+import SortPill from '../../../shared/components/SortPill';
 import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { useDialog } from '../../../shared/context/DialogContext';
 import { useExportUsers } from '../../../shared/hooks/useExportUsers';
@@ -112,6 +113,7 @@ export default function FansScreen({ navigation }: any) {
     route.params?.initialQuery ?? '',
   );
   const [sortBy, setSortBy] = useState<SortKey>('username');
+  const [ghostOnly, setGhostOnly] = useState(false);
   const { refresh, refreshing } = useRefreshAppData();
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
@@ -138,39 +140,21 @@ export default function FansScreen({ navigation }: any) {
 
   const sortedList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const filtered = q
+    let filtered = q
       ? fans.filter((u) => u.username.toLowerCase().includes(q))
       : fans;
+    if (ghostOnly) {
+      filtered = filtered.filter((u) => ghostScore(u).isGhost);
+    }
     return [...filtered].sort((a, b) => {
       if (sortBy === 'username') return a.username.localeCompare(b.username);
       return (b.timestamp || 0) - (a.timestamp || 0);
     });
-  }, [fans, searchQuery, sortBy]);
+  }, [fans, searchQuery, sortBy, ghostOnly]);
 
   const handleOpenProfile = (user: InstagramUser) => {
     openInstagramProfile(user.username, user.profileUrl);
   };
-
-  const SortPill = ({
-    label,
-    active,
-    onPress,
-  }: {
-    label: string;
-    active: boolean;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[styles.sortPill, active && styles.sortPillActive]}
-    >
-      <Text style={[styles.sortPillText, active && styles.sortPillTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
 
   return (
     <View style={styles.root}>
@@ -257,12 +241,22 @@ export default function FansScreen({ navigation }: any) {
               label="A–Z"
               active={sortBy === 'username'}
               onPress={() => setSortBy('username')}
+              styles={styles}
             />
             <SortPill
               label="Date"
               active={sortBy === 'date'}
               onPress={() => setSortBy('date')}
+              styles={styles}
             />
+            {hasTimestamps && (
+              <SortPill
+                label="Likely inactive"
+                active={ghostOnly}
+                onPress={() => setGhostOnly((v) => !v)}
+                styles={styles}
+              />
+            )}
           </View>
         </View>
 
@@ -283,7 +277,7 @@ export default function FansScreen({ navigation }: any) {
                 <UserItem
                   user={item}
                   isBot={isLikelyBot(item.username)}
-                  ghostBand={g.isGhost ? g.band : undefined}
+                  ghostBand={ghostOnly && g.isGhost ? g.band : undefined}
                   onPress={handleOpenProfile}
                   colors={colors}
                   styles={styles}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,59 @@ const LABEL_COLOR: Record<ListLabel, string> = {
 
 type SearchResult = { user: InstagramUser; labels: ListLabel[] };
 
+type Styles = ReturnType<typeof makeStyles>;
+
+// Module-scope + memoized virtualized-list row (was an inline renderItem arrow →
+// a new component identity every render → React remounted each row). Callbacks
+// are hoisted with useCallback in the screen so memo stays effective. C15e item 1.
+const SearchResultRow = React.memo(function SearchResultRow({
+  item,
+  onOpen,
+  onPickLabel,
+  colors,
+  styles,
+}: {
+  item: SearchResult;
+  onOpen: (item: SearchResult) => void;
+  onPickLabel: (label: ListLabel, username: string) => void;
+  colors: ColorSet;
+  styles: Styles;
+}) {
+  return (
+    <View style={styles.resultRow}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.resultMain}
+        onPress={() => onOpen(item)}
+      >
+        <UserAvatar username={item.user.username} size={44} />
+        <View style={styles.resultInfo}>
+          <Text style={styles.username} numberOfLines={1} ellipsizeMode="tail">
+            @{item.user.username}
+          </Text>
+          <View style={styles.chipsRow}>
+            {item.labels.map((label) => (
+              <TouchableOpacity
+                key={label}
+                activeOpacity={0.7}
+                onPress={() => onPickLabel(label, item.user.username)}
+                style={[styles.chip, { backgroundColor: LABEL_COLOR[label] + '1A' }]}
+              >
+                <Text style={[styles.chipText, { color: LABEL_COLOR[label] }]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+        <View style={styles.openBtn}>
+          <Ionicons name="open-outline" size={16} color={colors.primary} />
+        </View>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 export default function SearchScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const whitelist = useAppStore((s) => s.whitelist);
@@ -96,28 +149,39 @@ export default function SearchScreen({ navigation }: any) {
     );
   }, [query, followerData, whitelist, unfollowed]);
 
-  const goToList = (label: ListLabel, username: string) => {
-    switch (label) {
-      case 'Followers':
-      case 'Following':
-      case 'Mutual':
-        navigation.navigate(label, { initialQuery: username });
-        break;
-      case 'Fans':
-        navigation.navigate('Fans', { initialQuery: username });
-        break;
-      case 'Unfollowers':
-        navigation.navigate('Tabs', {
-          screen: 'Unfollowers',
-          params: { initialQuery: username },
-        });
-        break;
-      case 'Whitelist':
-      case 'Unfollowed':
-        navigation.navigate('Tabs', { screen: 'Settings' });
-        break;
-    }
-  };
+  const goToList = useCallback(
+    (label: ListLabel, username: string) => {
+      switch (label) {
+        case 'Followers':
+        case 'Following':
+        case 'Mutual':
+          navigation.navigate(label, { initialQuery: username });
+          break;
+        case 'Fans':
+          navigation.navigate('Fans', { initialQuery: username });
+          break;
+        case 'Unfollowers':
+          navigation.navigate('Tabs', {
+            screen: 'Unfollowers',
+            params: { initialQuery: username },
+          });
+          break;
+        case 'Whitelist':
+        case 'Unfollowed':
+          navigation.navigate('Tabs', { screen: 'Settings' });
+          break;
+      }
+    },
+    [navigation],
+  );
+
+  const handleOpen = useCallback(
+    (item: SearchResult) => {
+      record(query);
+      openInstagramProfile(item.user.username, item.user.profileUrl);
+    },
+    [record, query],
+  );
 
   return (
     <View style={styles.root}>
@@ -177,49 +241,13 @@ export default function SearchScreen({ navigation }: any) {
           data={results}
           keyExtractor={(item) => item.user.username}
           renderItem={({ item }) => (
-            <View style={styles.resultRow}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.resultMain}
-                onPress={() => {
-                  record(query);
-                  openInstagramProfile(item.user.username, item.user.profileUrl);
-                }}
-              >
-                <UserAvatar username={item.user.username} size={44} />
-                <View style={styles.resultInfo}>
-                  <Text
-                    style={styles.username}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                  >
-                    @{item.user.username}
-                  </Text>
-                  <View style={styles.chipsRow}>
-                    {item.labels.map((label) => (
-                      <TouchableOpacity
-                        key={label}
-                        activeOpacity={0.7}
-                        onPress={() => goToList(label, item.user.username)}
-                        style={[
-                          styles.chip,
-                          { backgroundColor: LABEL_COLOR[label] + '1A' },
-                        ]}
-                      >
-                        <Text
-                          style={[styles.chipText, { color: LABEL_COLOR[label] }]}
-                        >
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                <View style={styles.openBtn}>
-                  <Ionicons name="open-outline" size={16} color={colors.primary} />
-                </View>
-              </TouchableOpacity>
-            </View>
+            <SearchResultRow
+              item={item}
+              onOpen={handleOpen}
+              onPickLabel={goToList}
+              colors={colors}
+              styles={styles}
+            />
           )}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"

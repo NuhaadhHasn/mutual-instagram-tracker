@@ -36,6 +36,7 @@ import { useDialog } from '../../../shared/context/DialogContext';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
 import RecentSearches from '../../../shared/components/RecentSearches';
+import SortPill from '../../../shared/components/SortPill';
 import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { haptic } from '../../../shared/utils/haptics';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
@@ -202,6 +203,7 @@ export default function UnfollowersScreen() {
   const [sortBy, setSortBy] = useState<SortKey>('username');
   const [showWhitelisted, setShowWhitelisted] = useState(false);
   const [showUnfollowed, setShowUnfollowed] = useState(false);
+  const [ghostOnly, setGhostOnly] = useState(false);
   const { refresh, refreshing } = useRefreshAppData();
   const multi = useMultiSelect<string>();
   const insets = useSafeAreaInsets();
@@ -241,6 +243,9 @@ export default function UnfollowersScreen() {
     if (q) {
       filtered = filtered.filter((u) => u.username.toLowerCase().includes(q));
     }
+    if (ghostOnly) {
+      filtered = filtered.filter((u) => ghostScore(u).isGhost);
+    }
     return [...filtered].sort((a, b) => {
       if (sortBy === 'username') return a.username.localeCompare(b.username);
       return (b.timestamp || 0) - (a.timestamp || 0);
@@ -253,6 +258,7 @@ export default function UnfollowersScreen() {
     whitelistSet,
     showUnfollowed,
     unfollowedSet,
+    ghostOnly,
   ]);
 
   const handleOpenProfile = (user: InstagramUser) => {
@@ -416,26 +422,6 @@ export default function UnfollowersScreen() {
       iconColor: '#E1306C',
     });
   };
-
-  const SortPill = ({
-    label,
-    active,
-    onPress,
-  }: {
-    label: string;
-    active: boolean;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[styles.sortPill, active && styles.sortPillActive]}
-    >
-      <Text style={[styles.sortPillText, active && styles.sortPillTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
 
   if (isHydrating && !followerData) {
     return (
@@ -612,17 +598,28 @@ export default function UnfollowersScreen() {
             label="A–Z"
             active={sortBy === 'username'}
             onPress={() => setSortBy('username')}
+            styles={styles}
           />
           <SortPill
             label="Date"
             active={sortBy === 'date'}
             onPress={() => setSortBy('date')}
+            styles={styles}
           />
+          {hasTimestamps && (
+            <SortPill
+              label="Likely inactive"
+              active={ghostOnly}
+              onPress={() => setGhostOnly((v) => !v)}
+              styles={styles}
+            />
+          )}
           {hiddenByWhitelist > 0 && !multi.isActive && (
             <SortPill
               label={showWhitelisted ? 'Hide whitelisted' : 'Show whitelisted'}
               active={showWhitelisted}
               onPress={() => setShowWhitelisted((v) => !v)}
+              styles={styles}
             />
           )}
           {hiddenByUnfollowed > 0 && !multi.isActive && (
@@ -630,6 +627,7 @@ export default function UnfollowersScreen() {
               label={showUnfollowed ? 'Hide unfollowed' : 'Show unfollowed'}
               active={showUnfollowed}
               onPress={() => setShowUnfollowed((v) => !v)}
+              styles={styles}
             />
           )}
         </View>
@@ -660,7 +658,7 @@ export default function UnfollowersScreen() {
                 isWhitelisted={whitelistSet.has(item.username)}
                 isUnfollowed={unfollowedSet.has(item.username)}
                 isBot={isLikelyBot(item.username)}
-                ghostBand={g.isGhost ? g.band : undefined}
+                ghostBand={ghostOnly && g.isGhost ? g.band : undefined}
                 tag={whitelistTagMap.get(item.username)}
                 isSelected={multi.has(item.username)}
                 selectionActive={multi.isActive}

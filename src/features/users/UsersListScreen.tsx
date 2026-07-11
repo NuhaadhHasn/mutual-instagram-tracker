@@ -37,6 +37,7 @@ import UserAvatar from '../../shared/components/UserAvatar';
 import AnimatedFadeSlide from '../../shared/components/AnimatedFadeSlide';
 import UserItemSkeleton from '../../shared/components/skeletons/UserItemSkeleton';
 import RecentSearches from '../../shared/components/RecentSearches';
+import SortPill from '../../shared/components/SortPill';
 import { useRecentSearches } from '../../shared/hooks/useRecentSearches';
 import { useRefreshAppData } from '../../shared/hooks/useRefreshAppData';
 import { useMultiSelect } from '../../shared/hooks/useMultiSelect';
@@ -418,26 +419,6 @@ export default function UsersListScreen({ navigation }: any) {
       hasTimestamps,
     });
 
-  const SortPill = ({
-    label,
-    active,
-    onPress,
-  }: {
-    label: string;
-    active: boolean;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={onPress}
-      style={[styles.sortPill, active && styles.sortPillActive]}
-    >
-      <Text style={[styles.sortPillText, active && styles.sortPillTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
@@ -575,11 +556,13 @@ export default function UsersListScreen({ navigation }: any) {
                 label="A–Z"
                 active={sortBy === 'username'}
                 onPress={() => setSortBy('username')}
+                styles={styles}
               />
               <SortPill
                 label="Date"
                 active={sortBy === 'date'}
                 onPress={() => setSortBy('date')}
+                styles={styles}
               />
             </View>
           </View>
@@ -591,21 +574,25 @@ export default function UsersListScreen({ navigation }: any) {
               label="All"
               active={recency === 'all'}
               onPress={() => setRecency('all')}
+              styles={styles}
             />
             <SortPill
               label="Last 7 days"
               active={recency === '7'}
               onPress={() => setRecency('7')}
+              styles={styles}
             />
             <SortPill
               label="Last 30 days"
               active={recency === '30'}
               onPress={() => setRecency('30')}
+              styles={styles}
             />
             <SortPill
               label="Likely inactive"
               active={ghostOnly}
               onPress={() => setGhostOnly((v) => !v)}
+              styles={styles}
             />
           </View>
         )}
@@ -639,7 +626,7 @@ export default function UsersListScreen({ navigation }: any) {
                   isWhitelisted={whitelistSet.has(item.username)}
                   isUnfollowed={unfollowedSet.has(item.username)}
                   isBot={isLikelyBot(item.username)}
-                  ghostBand={g.isGhost ? g.band : undefined}
+                  ghostBand={ghostOnly && g.isGhost ? g.band : undefined}
                   tag={whitelistTagMap.get(item.username)}
                   selectionActive={multi.isActive}
                   onTap={handleTap}

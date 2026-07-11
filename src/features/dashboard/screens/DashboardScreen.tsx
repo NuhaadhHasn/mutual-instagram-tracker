@@ -34,6 +34,66 @@ import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkele
 import ShareStatModal from '../../share/ShareStatModal';
 import { haptic } from '../../../shared/utils/haptics';
 
+type Styles = ReturnType<typeof makeStyles>;
+
+// Module-scope + memoized (were inline → new component identity every render →
+// React remounted the subtree). colors/styles passed as props. C15e item 1.
+const StatCard = React.memo(function StatCard({
+  icon,
+  title,
+  value,
+  color,
+  onPress,
+  styles,
+}: {
+  icon: any;
+  title: string;
+  value: number;
+  color: string;
+  onPress?: () => void;
+  styles: Styles;
+}) {
+  const inner = (
+    <View style={[styles.statCard, { borderLeftColor: color }]}>
+      <View style={[styles.statIconBg, { backgroundColor: color + '15' }]}>
+        <Ionicons name={icon} size={22} color={color} />
+      </View>
+      <Text style={styles.statValue}>{value.toLocaleString()}</Text>
+      <Text style={styles.statLabel}>{title}</Text>
+    </View>
+  );
+  return onPress ? (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
+      {inner}
+    </TouchableOpacity>
+  ) : (
+    <View>{inner}</View>
+  );
+});
+
+const ActionButton = React.memo(function ActionButton({
+  icon,
+  label,
+  onPress,
+  colors,
+  styles,
+}: {
+  icon: any;
+  label: string;
+  onPress: () => void;
+  colors: ColorSet;
+  styles: Styles;
+}) {
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.actionCard}>
+      <View style={styles.actionIconBg}>
+        <Ionicons name={icon} size={20} color={colors.primary} />
+      </View>
+      <Text style={styles.actionLabel}>{label}</Text>
+    </TouchableOpacity>
+  );
+});
+
 export default function DashboardScreen({ navigation }: any) {
   const followerData = useAppStore((s) => s.followerData);
   const isHydrating = useAppStore((s) => s.isHydrating);
@@ -83,54 +143,6 @@ export default function DashboardScreen({ navigation }: any) {
 
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
   const shortGradient = isDark ? DarkGradients.primaryShort : Gradients.primaryShort;
-
-  const StatCard = ({
-    icon,
-    title,
-    value,
-    color,
-    onPress,
-  }: {
-    icon: any;
-    title: string;
-    value: number;
-    color: string;
-    onPress?: () => void;
-  }) => {
-    const inner = (
-      <View style={[styles.statCard, { borderLeftColor: color }]}>
-        <View style={[styles.statIconBg, { backgroundColor: color + '15' }]}>
-          <Ionicons name={icon} size={22} color={color} />
-        </View>
-        <Text style={styles.statValue}>{value.toLocaleString()}</Text>
-        <Text style={styles.statLabel}>{title}</Text>
-      </View>
-    );
-    return onPress ? (
-      <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
-        {inner}
-      </TouchableOpacity>
-    ) : (
-      <View>{inner}</View>
-    );
-  };
-
-  const ActionButton = ({
-    icon,
-    label,
-    onPress,
-  }: {
-    icon: any;
-    label: string;
-    onPress: () => void;
-  }) => (
-    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={styles.actionCard}>
-      <View style={styles.actionIconBg}>
-        <Ionicons name={icon} size={20} color={colors.primary} />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
 
   if (isHydrating && !followerData) {
     return (
@@ -287,6 +299,7 @@ export default function DashboardScreen({ navigation }: any) {
               value={stats.followersCount}
               color={colors.info}
               onPress={() => handleNavWithHaptic('Followers')}
+              styles={styles}
             />
           </AnimatedFadeSlide>
           <AnimatedFadeSlide index={1} variant="scale" style={styles.statCell}>
@@ -296,6 +309,7 @@ export default function DashboardScreen({ navigation }: any) {
               value={stats.followingCount}
               color={colors.secondary}
               onPress={() => handleNavWithHaptic('Following')}
+              styles={styles}
             />
           </AnimatedFadeSlide>
           <AnimatedFadeSlide index={2} variant="scale" style={styles.statCell}>
@@ -305,6 +319,7 @@ export default function DashboardScreen({ navigation }: any) {
               value={stats.unfollowersCount}
               color={colors.error}
               onPress={() => handleNavWithHaptic('Unfollowers')}
+              styles={styles}
             />
           </AnimatedFadeSlide>
           <AnimatedFadeSlide index={3} variant="scale" style={styles.statCell}>
@@ -314,6 +329,7 @@ export default function DashboardScreen({ navigation }: any) {
               value={stats.mutualFollows}
               color={colors.success}
               onPress={() => handleNavWithHaptic('Mutual')}
+              styles={styles}
             />
           </AnimatedFadeSlide>
           <AnimatedFadeSlide index={4} variant="scale" style={styles.statCell}>
@@ -323,6 +339,7 @@ export default function DashboardScreen({ navigation }: any) {
               value={stats.fansCount}
               color={colors.secondary}
               onPress={() => handleNavWithHaptic('Fans')}
+              styles={styles}
             />
           </AnimatedFadeSlide>
         </View>
@@ -380,6 +397,8 @@ export default function DashboardScreen({ navigation }: any) {
               icon="list"
               label="View Unfollowers"
               onPress={() => handleNavWithHaptic('Unfollowers')}
+              colors={colors}
+              styles={styles}
             />
           </AnimatedFadeSlide>
           <AnimatedFadeSlide index={8} style={{ flex: 1 }}>
@@ -387,6 +406,8 @@ export default function DashboardScreen({ navigation }: any) {
               icon="refresh"
               label="Update Data"
               onPress={() => handleNavWithHaptic('Import')}
+              colors={colors}
+              styles={styles}
             />
           </AnimatedFadeSlide>
         </View>
