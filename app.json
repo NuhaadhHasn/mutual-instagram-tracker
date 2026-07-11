@@ -39,11 +39,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "your-project-id"
-      }
-    },
     "plugins": [
       "expo-sharing",
       "expo-font",
@@ -54,6 +49,12 @@
           "color": "#E1306C"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1652066d-3b8e-417c-ad3b-f6faff81d662"
+      }
+    },
+    "owner": "nuhaadhhasn"
   }
 }
