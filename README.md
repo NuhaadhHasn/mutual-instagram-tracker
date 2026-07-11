@@ -9,6 +9,20 @@
 
 A privacy-first mobile app, built with React Native and Expo, that helps you see who follows you back on Instagram. Mutual reads your Instagram data export on your device — no login, no servers, no tracking.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="30%" alt="Dashboard — stat grid + account health" />
+  <img src="docs/screenshots/followers.png" width="30%" alt="Followers list (usernames redacted for privacy)" />
+  <img src="docs/screenshots/analytics.png" width="30%" alt="Analytics — follower breakdown + follow-back ratio" />
+  <img src="docs/screenshots/insights.png" width="30%" alt="Analytics — bar chart + insights" />
+  <img src="docs/screenshots/history.png" width="30%" alt="History — follower trend + snapshots" />
+  <img src="docs/screenshots/settings.png" width="30%" alt="Settings — accounts, appearance, data, privacy" />
+  <img src="docs/screenshots/import.png" width="30%" alt="Import — how to get your Instagram data" />
+</p>
+
+> Usernames in the Followers list are **redacted here for privacy** — the app shows real handles normally on your device. All other screens show aggregate numbers only.
+
 ## Features
 
 - **Unfollowers** — people you follow who don't follow back
