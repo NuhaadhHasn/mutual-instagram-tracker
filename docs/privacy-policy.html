@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="index, follow">
+<title>Privacy Policy — Mutual</title>
+<style>
+  :root {
+    --bg: #f7f7fb; --surface: #ffffff; --text: #1c1c28; --muted: #5b5b6b;
+    --border: #e7e7ef; --brand: #E1306C; --code-bg: #f0f0f6; --code-text: #833AB4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f0f14; --surface: #1a1a22; --text: #f2f2f7; --muted: #a5a5b5;
+      --border: #2a2a36; --brand: #ff5c92; --code-bg: #23232e; --code-text: #d9a7ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 20px 72px; }
+  header {
+    background: linear-gradient(120deg, #833AB4 0%, #E1306C 55%, #FCAF45 100%);
+    color: #fff; border-radius: 16px; padding: 28px 24px; margin-bottom: 28px;
+  }
+  header h1 { margin: 0 0 6px; font-size: 1.7rem; letter-spacing: -0.5px; }
+  header p { margin: 0; opacity: 0.95; font-size: 0.95rem; }
+  .dates { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .dates strong { color: var(--text); }
+  section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
+  }
+  h2 { font-size: 1.15rem; margin: 0 0 10px; color: var(--brand); }
+  p { margin: 0 0 12px; }
+  ul { margin: 0 0 12px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code {
+    background: var(--code-bg); color: var(--code-text);
+    padding: 2px 6px; border-radius: 6px; font-size: 0.85em;
+    font-family: "SF Mono", Consolas, "Liberation Mono", monospace;
+    word-break: break-word;
+  }
+  a { color: var(--brand); }
+  .lead { font-size: 1.05rem; }
+  footer { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Privacy Policy</h1>
+    <p>Mutual — see who's really with you on Instagram</p>
+  </header>
+
+  <p class="dates"><strong>Effective date:</strong> 2026-07-12 &nbsp;·&nbsp; <strong>Last updated:</strong> 2026-07-12</p>
+
+  <section>
+    <h2>Summary</h2>
+    <p class="lead">Mutual is a privacy-first mobile app that helps you see who follows you back on Instagram. It runs entirely on your device. We do not collect, store, or transmit any personal data to any server. There is no account, no login, no analytics, and no tracking.</p>
+    <p>If that's all you needed to know, you can stop reading.</p>
+  </section>
+
+  <section>
+    <h2>What data does Mutual touch?</h2>
+    <p>When you choose to import your Instagram data export ZIP, Mutual reads two files inside it on your device:</p>
+    <ul>
+      <li><code>followers_1.json</code> — the list of accounts that follow you</li>
+      <li><code>following.json</code> — the list of accounts you follow</li>
+    </ul>
+    <p>From those files the app computes:</p>
+    <ul>
+      <li>Who doesn't follow you back (Unfollowers)</li>
+      <li>Who follows you that you don't follow back (Fans)</li>
+      <li>Statistics (counts, ratios)</li>
+      <li>Historical snapshots of those numbers (only if you import more than once)</li>
+    </ul>
+    <p>All of this is held in your device's local storage (AsyncStorage). It never leaves your phone.</p>
+  </section>
+
+  <section>
+    <h2>What data does Mutual NOT touch?</h2>
+    <ul>
+      <li>Your Instagram password (the app never asks for it)</li>
+      <li>Your Instagram session, cookies, or any other authentication</li>
+      <li>Any account on Instagram other than the one(s) whose data export you provided</li>
+      <li>Any contacts, photos, location, microphone, or device identifiers</li>
+      <li>Any analytics, crash reports, or telemetry — Mutual does not send any of this anywhere</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Network usage</h2>
+    <p>Mutual does not make any network requests. The only network behaviour is when you deliberately tap a username, which opens that account's public Instagram profile in your browser or the Instagram app. That is a normal <code>Linking.openURL</code> call — Mutual does not communicate with Instagram itself.</p>
+  </section>
+
+  <section>
+    <h2>Data storage and deletion</h2>
+    <p>All app data is stored locally on your device, under these AsyncStorage keys:</p>
+    <ul>
+      <li><code>@instagram_tracker:follower_data</code> — your imported follower/following data</li>
+      <li><code>@instagram_tracker:whitelist</code> — accounts you've hidden from your unfollowers list</li>
+      <li><code>@instagram_tracker:unfollowed</code> — accounts you've marked as unfollowed</li>
+      <li><code>@instagram_tracker:history</code> — snapshots of your past imports</li>
+      <li><code>@instagram_tracker:accounts</code> and <code>@instagram_tracker:current_account</code> — the Instagram accounts you track in the app and which one is active</li>
+      <li><code>@instagram_tracker:theme</code>, <code>@instagram_tracker:onboarding_done</code>, and a few small preference flags (e.g. screenshot blocking, app lock)</li>
+    </ul>
+    <p>If you track more than one Instagram account, each account's data is stored separately on your device under this same scheme. You can delete everything for the active account from Settings → Clear All Data, delete a whole account from Settings → Accounts, or remove all of it by uninstalling the app.</p>
+    <p>You can also export everything to a JSON file from Settings → Export app state, and restore from one later. This is for your own convenience — nothing is uploaded.</p>
+  </section>
+
+  <section>
+    <h2>Sharing</h2>
+    <p>Mutual does not share any data with anyone. There are no third parties involved.</p>
+    <p>The CSV export feature uses your device's built-in share sheet. The file Mutual produces is saved to your device first; whether you then send it via email, AirDrop, messages, etc. is entirely your choice, and that data is handled by whichever app you pick — not by Mutual.</p>
+    <p>The "share your stats" feature works the same way: Mutual renders an image of your aggregate numbers only (followers, following, mutual, fans, follow-back ratio) — it never includes your follower list or any usernames — and hands that image to your device's share sheet for you to post or send wherever you choose.</p>
+  </section>
+
+  <section>
+    <h2>Children</h2>
+    <p>Mutual is not directed at children under 13. We do not knowingly collect any data from anyone (we don't collect data at all), but Instagram's own terms of service set their own minimum age.</p>
+  </section>
+
+  <section>
+    <h2>Changes to this policy</h2>
+    <p>If the privacy policy changes, the "Last updated" date at the top of this document will change. Since the app does not phone home, there is no way for us to notify you of policy changes; check this page when you update the app.</p>
+  </section>
+
+  <section>
+    <h2>Contact</h2>
+    <p>Questions, concerns, or feedback:</p>
+    <p><strong>Email:</strong> <a href="mailto:nuhaadh9991@gmail.com">nuhaadh9991@gmail.com</a><br>
+    <strong>GitHub Issues:</strong> <a href="https://github.com/NuhaadhHasn/mutual-instagram-tracker/issues">github.com/NuhaadhHasn/mutual-instagram-tracker/issues</a></p>
+  </section>
+
+  <section>
+    <h2>Legal disclaimer</h2>
+    <p>Mutual is not affiliated with, endorsed by, or sponsored by Instagram or Meta Platforms, Inc. Instagram is a trademark of Meta Platforms, Inc. This app reads the official data export Instagram provides to its users; it does not interact with Instagram's API or services.</p>
+  </section>
+
+  <footer>© 2026 Mutual · Privacy-first Instagram follower tracker</footer>
+</div>
+</body>
+</html>

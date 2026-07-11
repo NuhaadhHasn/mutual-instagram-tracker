@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "gen-icons": "node scripts/gen-icons.js",
+    "gen-store-assets": "node scripts/gen-store-assets.js",
     "test": "jest"
   },
   "dependencies": {

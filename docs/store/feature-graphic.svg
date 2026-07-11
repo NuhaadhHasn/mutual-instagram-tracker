@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Mutual — Google Play feature graphic, 1024x500. Source for scripts/gen-store-assets.js. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#833AB4"/>
+      <stop offset="0.55" stop-color="#E1306C"/>
+      <stop offset="1" stop-color="#FCAF45"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Brand gradient background -->
+  <rect x="0" y="0" width="1024" height="500" fill="url(#bg)"/>
+
+  <!-- Two Linked Rings logo (same geometry as assets/icon.svg), scaled + moved to the left -->
+  <g transform="translate(-10,-30) scale(0.55)">
+    <circle cx="430" cy="512" r="240" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+    <path d="M 794 540 A 200 200 0 1 1 794 484" fill="none" stroke="#ffffff" stroke-width="56" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark + tagline -->
+  <text x="470" y="242" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="140" font-weight="700" letter-spacing="-3" fill="#ffffff">Mutual</text>
+  <text x="474" y="318" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-size="40" font-weight="400" fill="#ffffff" opacity="0.96">See who's really with you</text>
+</svg>

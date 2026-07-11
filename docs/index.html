@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutual — see who's really with you</title>
+<style>
+  :root { --bg:#0f0f14; --text:#f2f2f7; --muted:#a5a5b5; --card:#1a1a22; --border:#2a2a36; --brand:#ff5c92; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f7f7fb; --text:#1c1c28; --muted:#5b5b6b; --card:#ffffff; --border:#e7e7ef; --brand:#E1306C; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin:0; min-height:100vh; background:var(--bg); color:var(--text);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .card { max-width:620px; width:100%; text-align:center; }
+  .banner { width:100%; border-radius:16px; display:block; margin-bottom:28px; }
+  h1 { font-size:1.6rem; margin:0 0 8px; letter-spacing:-0.5px; }
+  p.tag { color:var(--muted); margin:0 0 28px; font-size:1.05rem; }
+  .links { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  a.btn {
+    display:inline-block; padding:12px 22px; border-radius:10px; text-decoration:none;
+    font-weight:600; border:1px solid var(--border);
+  }
+  a.primary { background:var(--brand); color:#fff; border-color:var(--brand); }
+  a.secondary { color:var(--text); background:var(--card); }
+  footer { color:var(--muted); font-size:0.85rem; margin-top:32px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="banner" src="./store/feature-graphic.png" alt="Mutual — see who's really with you">
+    <h1>Mutual</h1>
+    <p class="tag">Find who doesn't follow you back on Instagram. 100% private — runs entirely on your device. No login, no servers, no tracking.</p>
+    <div class="links">
+      <a class="btn primary" href="./privacy-policy.html">Privacy Policy</a>
+      <a class="btn secondary" href="https://github.com/NuhaadhHasn/mutual-instagram-tracker">View on GitHub</a>
+    </div>
+    <footer>© 2026 Mutual · Not affiliated with Instagram or Meta Platforms, Inc.</footer>
+  </div>
+</body>
+</html>

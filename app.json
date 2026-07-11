@@ -30,6 +30,7 @@
         "backgroundColor": "#E1306C"
       },
       "package": "com.nuhaadh.mutual",
+      "versionCode": 1,
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
         "android.permission.INTERNET"

@@ -1,7 +1,7 @@
 # Privacy Policy for Mutual
 
-**Effective date:** TODO — fill in before publishing (e.g. 2026-05-24)
-**Last updated:** TODO
+**Effective date:** 2026-07-12
+**Last updated:** 2026-07-12
 
 ---
 
@@ -75,7 +75,7 @@ If the privacy policy changes, the "Last updated" date at the top of this docume
 
 Questions, concerns, or feedback:
 
-**Email:** TODO — your email here, e.g. nuhaadhh@example.com
+**Email:** nuhaadh9991@gmail.com
 **GitHub Issues:** https://github.com/NuhaadhHasn/mutual-instagram-tracker/issues
 
 ---

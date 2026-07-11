@@ -11,9 +11,9 @@ Copy-paste source for Google Play Store and Apple App Store submissions.
 |---|---|
 | App name | **Mutual** |
 | Subtitle / tagline | **See who's really with you on Instagram** |
-| Developer name | TODO — Nuhaadh (your display name) |
-| Developer email | TODO — your.email@example.com |
-| Privacy policy URL | TODO — paste the public URL of PRIVACY_POLICY.md (GitHub Pages / Notion / etc.) |
+| Developer name | Nuhaadh Hasn |
+| Developer email | nuhaadh9991@gmail.com |
+| Privacy policy URL | https://nuhaadhhasn.github.io/mutual-instagram-tracker/privacy-policy.html |
 | Bundle ID (iOS) | `com.nuhaadh.mutual` |
 | Package name (Android) | `com.nuhaadh.mutual` |
 | Version | 1.0.0 |
@@ -101,7 +101,7 @@ First release of Mutual.
 • Light / dark mode
 • 100% private — runs entirely on your device
 
-Feedback is welcome at TODO@example.com.
+Feedback is welcome at nuhaadh9991@gmail.com.
 ```
 
 ---
@@ -114,9 +114,9 @@ Generate these by running the app on a device and using OS screenshot. Naming be
 
 | Asset | Size | Status | Source |
 |---|---|---|---|
-| App icon | 512×512 PNG | TODO | export from `assets/icon.svg` at 512 |
-| Feature graphic | 1024×500 PNG | TODO | banner with the Two Linked Rings + "Mutual — see who's really with you" |
-| Phone screenshots (min 2, max 8) | 1080×1920 portrait | TODO | take in Expo Go / emulator |
+| App icon | 512×512 PNG | ✓ DONE | `docs/store/play-icon-512.png` (generated from `assets/icon.svg`) |
+| Feature graphic | 1024×500 PNG | ✓ DONE | `docs/store/feature-graphic.png` (Two Linked Rings + "Mutual — see who's really with you") |
+| Phone screenshots (min 2, max 8) | 1080×1920 portrait | TODO | recapture clean from preview APK (existing `docs/screenshots/` may have device frame/usernames) |
 | 7-inch tablet (optional) | — | skip | |
 | 10-inch tablet (optional) | — | skip | |
 
