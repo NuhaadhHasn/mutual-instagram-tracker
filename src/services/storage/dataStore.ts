@@ -20,6 +20,11 @@ import {
   getCachedMasterKey,
   loadMasterKey,
 } from './masterKey';
+import {
+  computeStats,
+  deriveFans,
+  deriveUnfollowers,
+} from '../parsers/computeFollowerData';
 
 // Per-account keys (namespaced by current account id — see keyFor) + global,
 // device-level keys (accounts registry, current pointer, prefs) that are NOT
@@ -875,28 +880,17 @@ function migrateFollowerData(data: FollowerData): FollowerData {
   let { unfollowers, fans, stats } = data;
 
   if (!Array.isArray(unfollowers)) {
-    const followerUsernames = new Set(followers.map((f) => f.username));
-    unfollowers = following.filter((f) => !followerUsernames.has(f.username));
+    unfollowers = deriveUnfollowers(followers, following);
     changed = true;
   }
 
   if (!Array.isArray(fans)) {
-    const followingUsernames = new Set(following.map((f) => f.username));
-    fans = followers.filter((f) => !followingUsernames.has(f.username));
+    fans = deriveFans(followers, following);
     changed = true;
   }
 
   if (!stats || typeof stats.fansCount !== 'number') {
-    const mutual = following.length - unfollowers.length;
-    stats = {
-      followersCount: followers.length,
-      followingCount: following.length,
-      unfollowersCount: unfollowers.length,
-      mutualFollows: mutual,
-      followBackRatio:
-        following.length > 0 ? (mutual / following.length) * 100 : 0,
-      fansCount: fans.length,
-    };
+    stats = computeStats(followers, following, unfollowers, fans);
     changed = true;
   }
 

@@ -1,7 +1,8 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import JSZip from 'jszip';
-import { InstagramUser, FollowerData, AnalyticsStats } from '../../shared/types';
+import { InstagramUser, FollowerData } from '../../shared/types';
+import { computeDerived } from './computeFollowerData';
 
 // Defensive limits (D8) — reject pathological inputs before they can OOM the JS
 // thread or hang the UI. A real IG export is a few MB; 100MB is a generous cap.
@@ -120,25 +121,8 @@ export class InstagramDataParser {
       })
       .filter((u): u is InstagramUser => u !== null);
 
-    // Calculate unfollowers (people you follow who don't follow you back)
-    const followerUsernames = new Set(followers.map(f => f.username));
-    const unfollowers = following.filter(f => !followerUsernames.has(f.username));
-
-    // Calculate fans (people who follow you but you don't follow back)
-    const followingUsernames = new Set(following.map(f => f.username));
-    const fans = followers.filter(f => !followingUsernames.has(f.username));
-
-    // Calculate stats
-    const stats: AnalyticsStats = {
-      followersCount: followers.length,
-      followingCount: following.length,
-      unfollowersCount: unfollowers.length,
-      mutualFollows: following.length - unfollowers.length,
-      followBackRatio: following.length > 0
-        ? ((following.length - unfollowers.length) / following.length) * 100
-        : 0,
-      fansCount: fans.length,
-    };
+    // Derive unfollowers / fans / stats (shared pure math — see computeFollowerData).
+    const { unfollowers, fans, stats } = computeDerived(followers, following);
 
     const data: FollowerData = {
       followers,
