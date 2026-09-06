@@ -46,11 +46,7 @@ import { useDialog } from '../../shared/context/DialogContext';
 import { useExportUsers } from '../../shared/hooks/useExportUsers';
 import { haptic } from '../../shared/utils/haptics';
 
-export type UsersListKind =
-  | 'followers'
-  | 'following'
-  | 'mutual'
-  | 'fans';
+export type UsersListKind = 'followers' | 'following' | 'mutual';
 
 type Params = {
   kind: UsersListKind;
@@ -82,12 +78,6 @@ const CONFIG: Record<
     subtitle: 'People who follow each other',
     emoji: '❤️',
     emptyTitle: 'No mutual follows',
-  },
-  fans: {
-    title: 'Fans',
-    subtitle: "People who follow you but you don't follow back",
-    emoji: '🤝',
-    emptyTitle: 'You follow everyone back!',
   },
 };
 
@@ -260,8 +250,6 @@ export default function UsersListScreen({ navigation }: any) {
         return followerData.followers;
       case 'following':
         return followerData.following;
-      case 'fans':
-        return followerData.fans;
       case 'mutual': {
         const followerSet = new Set(
           followerData.followers.map((f) => f.username),

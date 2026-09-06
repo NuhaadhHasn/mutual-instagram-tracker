@@ -14,6 +14,7 @@ export function useAppInit() {
   const setWipeThreshold = useAppStore((s) => s.setWipeThreshold);
   const setStorageEncrypted = useAppStore((s) => s.setStorageEncrypted);
   const setNotificationFrequency = useAppStore((s) => s.setNotificationFrequency);
+  const setWidgetEnabled = useAppStore((s) => s.setWidgetEnabled);
   const setRecentSearches = useAppStore((s) => s.setRecentSearches);
   const setAccounts = useAppStore((s) => s.setAccounts);
   const setCurrentAccountId = useAppStore((s) => s.setCurrentAccountId);
@@ -40,6 +41,7 @@ export function useAppInit() {
           notificationFrequency,
           recentSearches,
           accounts,
+          widgetEnabled,
         ] = await Promise.all([
           dataStore.getFollowerData(),
           dataStore.getWhitelist(),
@@ -53,6 +55,7 @@ export function useAppInit() {
           dataStore.getNotificationFrequency(),
           dataStore.getRecentSearches(),
           dataStore.getAccounts(),
+          dataStore.getWidgetEnabled(),
         ]);
         if (data) setFollowerData(data);
         setWhitelist(whitelist);
@@ -66,6 +69,7 @@ export function useAppInit() {
         setNotificationFrequency(notificationFrequency);
         setRecentSearches(recentSearches);
         setAccounts(accounts);
+        setWidgetEnabled(widgetEnabled);
         setCurrentAccountId(currentAccountId);
       })
       .catch((err) => {
@@ -82,6 +86,12 @@ export function useAppInit() {
             return n.rescheduleFromState();
           })
           .catch(() => {});
+        // C10: keep the home-screen widget in sync on every launch, so it stays
+        // fresh without needing a re-import. refreshIfEnabled re-reads the
+        // opt-in flag + follower data itself; no-ops in Expo Go.
+        import('../../services/widget')
+          .then((w) => w.refreshIfEnabled())
+          .catch(() => {});
       });
   }, [
     setFollowerData,
@@ -95,6 +105,7 @@ export function useAppInit() {
     setWipeThreshold,
     setStorageEncrypted,
     setNotificationFrequency,
+    setWidgetEnabled,
     setRecentSearches,
     setAccounts,
     setCurrentAccountId,

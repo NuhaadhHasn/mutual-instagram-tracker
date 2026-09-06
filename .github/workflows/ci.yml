@@ -1,0 +1,44 @@
+name: CI
+
+# Runs the same three gates this project enforces by hand: type-check, unit
+# tests, and a (non-blocking) Expo config/dependency check.
+#
+# Deliberately does NOT run `eas build`: that needs an EXPO_TOKEN secret and
+# would burn free-tier EAS build quota on every push. Builds stay manual.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: Type-check & test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test -- --ci
+
+      # Non-blocking: expo-doctor hits the network/registry and can go red on
+      # upstream drift that hasn't been deliberately adopted yet. Informational.
+      - name: Expo doctor
+        run: npx expo-doctor
+        continue-on-error: true

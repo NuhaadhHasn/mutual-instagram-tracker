@@ -80,6 +80,13 @@ export default function ImportScreen({ navigation }: any) {
         .then((n) => n.rescheduleFromState())
         .catch(() => {});
 
+      // C10: push the new counts to the home-screen widget immediately. This is
+      // what actually keeps it current — Android's updatePeriodMillis floor is
+      // 30 minutes, and this app's data only ever changes on a manual import.
+      import('../../../services/widget')
+        .then((w) => w.refreshIfEnabled())
+        .catch(() => {});
+
       haptic.success();
       setSuccessData(data);
 

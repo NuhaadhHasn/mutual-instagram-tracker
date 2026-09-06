@@ -5,6 +5,7 @@ import {
   HistoricalSnapshot,
   UnfollowedUser,
   WhitelistUser,
+  WidgetSummary,
 } from '../../shared/types';
 import {
   decryptWithKey,
@@ -46,6 +47,12 @@ const KEYS = {
   RECENT_SEARCHES: '@instagram_tracker:recent_searches',
   STORAGE_ENCRYPTED: '@instagram_tracker:storage_encrypted',
   NOTIFICATION_FREQUENCY: '@instagram_tracker:notification_frequency',
+  // C10 widget. WIDGET_SUMMARY is deliberately NOT in SENSITIVE_BASE_KEYS: the
+  // widget renders in a headless JS context with a cold master key, so it must
+  // stay plaintext to be readable. It holds aggregate counts only, never
+  // usernames. Both are global (the summary always reflects the ACTIVE account).
+  WIDGET_ENABLED: '@instagram_tracker:widget_enabled',
+  WIDGET_SUMMARY: '@instagram_tracker:widget_summary',
 };
 
 // How many recent search terms to keep (#11).
@@ -700,6 +707,56 @@ export class DataStore {
     }
   }
 
+  /**
+   * Home-screen widget preference (C10). Defaults to OFF — it is opt-in because
+   * a widget stays visible while the D1 app lock is engaged.
+   */
+  async getWidgetEnabled(): Promise<boolean> {
+    try {
+      return (await AsyncStorage.getItem(KEYS.WIDGET_ENABLED)) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  async setWidgetEnabled(enabled: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(KEYS.WIDGET_ENABLED, enabled ? 'true' : 'false');
+    } catch (error) {
+      console.error('Error saving widget preference:', error);
+    }
+  }
+
+  /**
+   * Aggregate-only widget payload (C10). Read/written with RAW AsyncStorage —
+   * never through readValue/writeValue — so the widget's headless task can read
+   * it without the at-rest master key. Aggregates only; never usernames.
+   */
+  async getWidgetSummary(): Promise<WidgetSummary | null> {
+    try {
+      const raw = await AsyncStorage.getItem(KEYS.WIDGET_SUMMARY);
+      return raw ? (JSON.parse(raw) as WidgetSummary) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveWidgetSummary(summary: WidgetSummary): Promise<void> {
+    try {
+      await AsyncStorage.setItem(KEYS.WIDGET_SUMMARY, JSON.stringify(summary));
+    } catch (error) {
+      console.error('Error saving widget summary:', error);
+    }
+  }
+
+  async clearWidgetSummary(): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(KEYS.WIDGET_SUMMARY);
+    } catch (error) {
+      console.error('Error clearing widget summary:', error);
+    }
+  }
+
   async setAppLock(enabled: boolean): Promise<void> {
     try {
       await AsyncStorage.setItem(KEYS.APP_LOCK, enabled ? 'true' : 'false');
@@ -851,6 +908,8 @@ export class DataStore {
         AsyncStorage.removeItem(await this.k(KEYS.WHITELIST)),
         AsyncStorage.removeItem(await this.k(KEYS.HISTORY)),
         AsyncStorage.removeItem(await this.k(KEYS.UNFOLLOWED)),
+        // C10: never leave the widget showing counts for data that no longer exists.
+        AsyncStorage.removeItem(KEYS.WIDGET_SUMMARY),
       ]);
     } catch (error) {
       console.error('Error clearing data:', error);

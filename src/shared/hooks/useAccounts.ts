@@ -30,6 +30,12 @@ export function useAccounts() {
     setWhitelist(whitelist);
     setUnfollowed(unfollowed);
     setHistory(history);
+    // C10: repoint the home-screen widget at the now-active account. Without
+    // this it keeps showing the previous account's numbers — silently wrong.
+    // Lazy + fire-and-forget: no-ops in Expo Go, never blocks the switch.
+    import('../../services/widget')
+      .then((w) => w.refreshIfEnabled())
+      .catch(() => {});
   }, [setFollowerData, setWhitelist, setUnfollowed, setHistory]);
 
   const switchAccount = useCallback(

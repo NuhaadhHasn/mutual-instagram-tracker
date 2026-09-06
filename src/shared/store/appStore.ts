@@ -25,6 +25,8 @@ interface AppState {
   storageEncrypted: boolean;
   // Local notification reminder frequency in days; 0 = off (#10)
   notificationFrequency: number;
+  // Home-screen widget opt-in (C10)
+  widgetEnabled: boolean;
   // Recent search terms (#11)
   recentSearches: string[];
   // Multi-account (C8)
@@ -45,6 +47,7 @@ interface AppState {
   setWipeThreshold: (n: number) => void;
   setStorageEncrypted: (enabled: boolean) => void;
   setNotificationFrequency: (days: number) => void;
+  setWidgetEnabled: (enabled: boolean) => void;
   setRecentSearches: (searches: string[]) => void;
   setAccounts: (accounts: Account[]) => void;
   setCurrentAccountId: (id: string | null) => void;
@@ -66,6 +69,7 @@ export const useAppStore = create<AppState>((set) => ({
   wipeThreshold: 10,
   storageEncrypted: false,
   notificationFrequency: 0,
+  widgetEnabled: false,
   recentSearches: [],
   accounts: [],
   currentAccountId: null,
@@ -85,6 +89,7 @@ export const useAppStore = create<AppState>((set) => ({
   setStorageEncrypted: (storageEncrypted) => set({ storageEncrypted }),
   setNotificationFrequency: (notificationFrequency) =>
     set({ notificationFrequency }),
+  setWidgetEnabled: (widgetEnabled) => set({ widgetEnabled }),
   setRecentSearches: (recentSearches) => set({ recentSearches }),
   setAccounts: (accounts) => set({ accounts }),
   setCurrentAccountId: (currentAccountId) => set({ currentAccountId }),

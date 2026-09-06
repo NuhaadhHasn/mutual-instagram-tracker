@@ -49,11 +49,21 @@ export interface AnalyticsStats {
   fansCount: number; // People who follow you but you don't follow back
 }
 
-export interface FollowerChange {
-  username: string;
-  profileUrl: string;
-  date: number;
-  type: 'gained' | 'lost';
+// Aggregate-only payload the Android home-screen widget reads (C10).
+// Deliberately stored UNENCRYPTED and separately from `follower_data`, because a
+// widget runs in a headless JS context with a cold master-key cache — reading the
+// encrypted store there would render a blank widget for anyone with D2 enabled.
+// NEVER put usernames (or ghost/bot lists) in here: a widget is visible on the
+// home screen even while the D1 app lock is engaged.
+export interface WidgetSummary {
+  followers: number;
+  following: number;
+  unfollowers: number;
+  mutual: number;
+  fans: number;
+  followBackRatio: number; // percent 0-100, same convention as AnalyticsStats
+  lastUpdated: number; // ms epoch, from FollowerData.lastUpdated
+  accountName: string; // so a stale write is visible rather than silently wrong
 }
 
 export interface WhitelistUser {

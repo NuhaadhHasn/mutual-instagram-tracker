@@ -41,6 +41,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as notifications from '../../../services/notifications';
+// Safe to static-import: services/widget.ts only *type*-imports the native
+// library and lazy-requires it behind an Expo Go guard (C10).
+import * as widget from '../../../services/widget';
 import {
   BorderRadius,
   ColorSet,
@@ -159,6 +162,8 @@ export default function SettingsScreen({ navigation }: any) {
   const setStorageEncrypted = useAppStore((s) => s.setStorageEncrypted);
   const notificationFrequency = useAppStore((s) => s.notificationFrequency);
   const setNotificationFrequency = useAppStore((s) => s.setNotificationFrequency);
+  const widgetEnabled = useAppStore((s) => s.widgetEnabled);
+  const setWidgetEnabled = useAppStore((s) => s.setWidgetEnabled);
   const isHydrating = useAppStore((s) => s.isHydrating);
   const dialog = useDialog();
   const {
@@ -871,6 +876,33 @@ export default function SettingsScreen({ navigation }: any) {
     notifications.scheduleImportReminder(freq, lastImportAt);
   };
 
+  /**
+   * C10 home-screen widget opt-in. Default OFF on purpose: a widget stays
+   * visible while the D1 app lock is engaged, so showing even aggregate counts
+   * must be the user's explicit choice. Only counts are ever written — the
+   * widget reads a separate plaintext `widget_summary` key, never usernames.
+   */
+  const handleToggleWidget = async (value: boolean) => {
+    if (!widget.isAvailable()) {
+      await dialog.alert({
+        title: 'Widget unavailable',
+        message:
+          'The home-screen widget needs a development or production build of Mutual — it is not available in Expo Go.',
+        icon: 'grid-outline',
+        iconColor: colors.warning,
+      });
+      return; // leave the pref unwritten
+    }
+    haptic.tap();
+    setWidgetEnabled(value);
+    await dataStore.setWidgetEnabled(value);
+    if (value) {
+      await widget.refreshIfEnabled();
+    } else {
+      await widget.disableWidget();
+    }
+  };
+
   const handlePickFrequency = async () => {
     const choice = await dialog.actionSheet({
       title: 'Remind me to import every…',
@@ -1524,6 +1556,24 @@ export default function SettingsScreen({ navigation }: any) {
           <Switch
             value={storageEncrypted}
             onValueChange={handleToggleEncryptAtRest}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor="#fff"
+          />
+        </View>
+        <Separator />
+        <View style={styles.toggleRow}>
+          <View style={[styles.rowIconBg, { backgroundColor: colors.primary + '15' }]}>
+            <Ionicons name="grid-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.toggleText}>
+            <Text style={styles.rowTitle}>Home-screen widget</Text>
+            <Text style={styles.rowSubtitle}>
+              Counts only — no usernames. Visible even while the app is locked.
+            </Text>
+          </View>
+          <Switch
+            value={widgetEnabled}
+            onValueChange={handleToggleWidget}
             trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor="#fff"
           />
