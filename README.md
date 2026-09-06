@@ -34,6 +34,7 @@ A privacy-first mobile app, built with React Native and Expo, that helps you see
 - **Multiple accounts** — track several Instagram accounts in one app, each with its own data; switch from Settings or the Dashboard chip
 - **Share your stats** — export a branded story (9:16) or square (1:1) image of your follower stats — numbers only, never usernames
 - **Smart CSV export** — export any list filtered to what's on screen / the last 7 or 30 days / minus likely spam, with plain or privacy-hashed usernames, plus a full-report export
+- **Home-screen widget (Android)** — optional and off by default: your counts at a glance on the home screen. Totals only, never usernames. Needs a real build (not Expo Go).
 - **Light / dark mode**
 - **Backup & restore** your entire app state to a JSON file (optionally passphrase-encrypted)
 - **100% private** — no network requests, no analytics, no tracking
@@ -56,7 +57,7 @@ Download the latest APK from [Releases](https://github.com/NuhaadhHasn/mutual-in
 
 ```bash
 git clone https://github.com/NuhaadhHasn/mutual-instagram-tracker.git
-cd instagram-tracker
+cd mutual-instagram-tracker
 npm install
 eas login
 eas build --platform android --profile preview
@@ -79,6 +80,7 @@ cd "instagram-tracker"
 npm install
 npx expo start -c       # clear cache + start Metro
 npx tsc --noEmit        # type-check
+npm test                # unit tests (jest)
 npm run gen-icons       # regenerate icon PNGs from assets/icon.svg
 ```
 
@@ -124,6 +126,7 @@ instagram-tracker/
 - `react-native-reanimated` for screen entrance animations
 - `expo-haptics`, `expo-file-system`, `expo-document-picker`, `expo-sharing`
 - `react-native-view-shot` to capture the shareable stat image
+- `react-native-android-widget` for the optional Android home-screen widget (config plugin — no Kotlin, still a managed Expo project)
 - JSZip for parsing Instagram's ZIP export
 
 ## Privacy & security

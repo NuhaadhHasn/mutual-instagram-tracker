@@ -31,7 +31,7 @@ Copy-paste source for Google Play Store and Apple App Store submissions.
 Find who unfollowed you. 100% private. No login. Everything stays on your phone.
 ```
 
-Character count: 79 ✓
+Character count: 80 ✓ (exactly at Play's 80-char limit — no room to add a single character)
 
 ---
 
@@ -60,6 +60,7 @@ What you get
 • Whitelist — long-press anyone to hide them from your unfollowers list (great for celebrities, brands, news accounts you follow on purpose)
 • Multiple accounts — track personal, business, and side accounts in one app, each with its own data; switch any time
 • Share your stats — turn your numbers into a clean story or square image to post anywhere (only your totals are shown — never your follower list)
+• Home-screen widget (Android) — optional, off by default: your follower numbers right on your home screen, totals only, never your follower list
 • Dark mode — light / dark / system
 • Smart CSV export — export any list, filtered by recency or what's on screen, to a CSV you can open in Excel / Google Sheets, with optional privacy-hashed usernames
 • Backup — export your entire app state to a JSON file (optionally passphrase-encrypted) and restore it on a new phone

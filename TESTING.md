@@ -92,7 +92,7 @@ Tap each card on the Dashboard — every one opens its dedicated list with a lig
 - [ ] **Mutual** card → opens Mutual list (people who follow each other)
 - [ ] **Fans** card → opens Fans screen
 
-The four new screens (Followers / Following / Mutual / Fans) all run on the **same generic component** (`UsersListScreen`). One bug fix anywhere fixes it for all of them.
+Followers / Following / Mutual all run on the **same generic component** (`UsersListScreen`) — one fix there covers those three. **Fans is a separate screen** (`FansScreen`, routed at `App.tsx:148`), so it has to be fixed and tested separately.
 
 ### Multi-select (Unfollowers + all 4 new list screens)
 - [ ] **Long-press any user** → enters selection mode + medium-vibration haptic + that user gets a pink border
@@ -156,8 +156,8 @@ The four new screens (Followers / Following / Mutual / Fans) all run on the **sa
 - [ ] Onboarding Next button → light tap
 - [ ] Splash → onboarding transition: no white flash (expo-splash-screen API)
 
-### Known performance ceiling
-The app currently feels **kinda slow** on heavy lists/screens. Known and tracked in `IMPROVEMENTS.md` C15e. Acceptable for testing right now, but if any specific interaction stutters badly (>500ms freeze), screenshot it and we'll fix that one first.
+### Performance
+The old "feels kinda slow" ceiling is **addressed in code**: the C15e work all shipped (Zustand selectors, memoized rows, `getItemLayout`, FlashList, inline-component extraction), and the 2026-07-11 full E2E device pass hit no stutters. It has never been **profiled** (C15e-MEASURE is still open), so if a specific interaction still freezes (>500ms), screenshot it and we'll fix that one first.
 
 If any of these doesn't behave, screenshot the issue or copy the error message and we'll iterate.
 
@@ -167,12 +167,7 @@ If any of these doesn't behave, screenshot the issue or copy the error message a
 
 Only do this once Expo Go testing passes. The APK is a real installable Android app that doesn't need Expo Go to run.
 
-```powershell
-cd "C:\Users\nuhaa\instagram Followers\instagram-tracker"
-eas build:configure
-```
-
-`eas build:configure` will create an `eas.json` file at the project root (one-time setup) and add your project's `extra.eas.projectId` to `app.json`. Then:
+> ✅ **Already done — skip `eas build:configure`.** `eas.json` is committed at the project root and `app.json` already carries `extra.eas.projectId` (`1652066d-…`) + `owner: nuhaadhhasn`. `eas login` is done too (`eas whoami` → `nuhaadhhasn`). Go straight to:
 
 ```powershell
 eas build --platform android --profile preview
@@ -185,6 +180,22 @@ eas build --platform android --profile preview
 - (Android may warn about "install from unknown source" — allow it)
 
 The "preview" profile produces an APK suitable for sideloading and sharing with friends. When it's time to submit to the Play Store, you'll switch to `--profile production` which builds an AAB (Android App Bundle) instead.
+### C10 home-screen widget (APK only — cannot be tested in Expo Go)
+
+> The native module is guarded in `src/services/widget.ts`; in Expo Go the Settings toggle just shows a "Widget unavailable" dialog. **All of the below needs the preview APK.** Nothing here has been device-verified yet.
+
+- [ ] Settings → Privacy → **Home-screen widget** row exists (between "Encrypt data at rest" and "Import reminders") and is **OFF by default**
+- [ ] Toggle it ON — no error dialog in a real build
+- [ ] Long-press the Android home screen → **Widgets** → **Mutual** appears in the picker with a preview image
+- [ ] Drop the widget (3×2 cell) — it renders followers / following / unfollowers / mutual / fans, the follow-back ratio, the last-updated date and the account name
+- [ ] **Counts only — no usernames anywhere on the widget** (this is the privacy invariant)
+- [ ] Import a fresh ZIP → the widget numbers update
+- [ ] Switch account (Dashboard chip) → the widget shows the new account's numbers
+- [ ] Turn on the app lock (D1) and lock the app → widget still shows its counts (expected: aggregates are safe on a lock screen)
+- [ ] **Turn on "Encrypt data at rest" (D2) → the widget must still render.** The `widget_summary` key is deliberately stored in plaintext because the headless render task is a cold JS context with no master key — **a blank widget here is the bug to watch for**
+- [ ] Resize the widget horizontally/vertically → layout stays legible
+- [ ] Toggle the Settings switch back OFF → the widget stops updating
+- [ ] Settings → **Clear All Data** → the widget summary is cleared too
 
 ---
 
@@ -197,7 +208,7 @@ eas submit --platform android                        # uploads to Play Console
 
 You'll also need (one-time):
 - Google Play Developer account ($25 one-time)
-- Privacy policy URL (the contents of `PRIVACY_POLICY.md` hosted publicly — GitHub Pages or a Notion page is fine)
+- Privacy policy URL — ✅ **already live**: https://nuhaadhhasn.github.io/mutual-instagram-tracker/privacy-policy.html (GitHub Pages, served from `docs/`)
 - Screenshots + listing copy (templates in `STORE_LISTING.md`)
 - Content rating questionnaire (in Play Console)
 - Data safety questionnaire (answer "no data collected" everywhere — it's true)
@@ -224,6 +235,7 @@ You'll also need (one-time):
 |---|---|
 | Start dev server | `npx expo start -c` |
 | Type-check | `npx tsc --noEmit` |
+| Run unit tests | `npm test` (jest — 35 tests / 6 suites) |
 | Regenerate icons from SVG | `npm run gen-icons` |
 | Build preview APK | `eas build --platform android --profile preview` |
 | Build production AAB | `eas build --platform android --profile production` |
