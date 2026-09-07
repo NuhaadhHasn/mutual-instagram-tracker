@@ -2,7 +2,11 @@ import React from 'react';
 import type { WidgetTaskHandlerProps } from 'react-native-android-widget';
 
 import { dataStore } from '../../services/storage/dataStore';
-import { MutualSummaryWidget } from './MutualSummaryWidget';
+import {
+  INK_DARK,
+  INK_LIGHT,
+  MutualSummaryWidget,
+} from './MutualSummaryWidget';
 
 /**
  * Headless task that Android invokes to paint the widget (C10).
@@ -30,13 +34,18 @@ export function renderMutualWidget(
   summary: Awaited<ReturnType<typeof dataStore.getWidgetSummary>>,
   info?: { width: number; height: number },
 ) {
-  return (
-    <MutualSummaryWidget
-      summary={summary}
-      width={info?.width}
-      height={info?.height}
-    />
-  );
+  const common = {
+    summary,
+    width: info?.width,
+    height: info?.height,
+  };
+  // WidgetRepresentation's `{light, dark}` form lets the system pick per theme —
+  // a widget has no React context, so this is how theming works here.
+  // `dark` must NEVER be null: the library dereferences it unconditionally.
+  return {
+    light: <MutualSummaryWidget {...common} skin={INK_LIGHT} />,
+    dark: <MutualSummaryWidget {...common} skin={INK_DARK} />,
+  };
 }
 
 export const widgetTaskHandler = async (
