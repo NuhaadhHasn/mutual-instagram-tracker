@@ -83,7 +83,9 @@ export async function requestUpdate(): Promise<void> {
     const summary = await dataStore.getWidgetSummary();
     await W.requestWidgetUpdate({
       widgetName: WIDGET_NAME,
-      renderWidget: () => renderMutualWidget(summary),
+      // The callback receives WidgetInfo per placed widget — pass its measured
+      // size so each instance renders the layout that fits it.
+      renderWidget: (info) => renderMutualWidget(summary, info),
     });
   } catch (error) {
     console.warn('Widget update failed:', error);

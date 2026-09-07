@@ -20,14 +20,17 @@ const GRADIENT_FROM = '#833AB4';
 const GRADIENT_TO = '#E1306C';
 const FONT = 'Segoe UI, Roboto, Arial, Helvetica, sans-serif';
 
-function stat(x, value, label) {
+function stat(x, y, value, label) {
   return `
-    <text x="${x}" y="128" font-family="${FONT}" font-size="40" font-weight="700"
+    <text x="${x}" y="${y}" font-family="${FONT}" font-size="30" font-weight="700"
           fill="#FFFFFF" text-anchor="middle">${value}</text>
-    <text x="${x}" y="150" font-family="${FONT}" font-size="15" letter-spacing="0.8"
+    <text x="${x}" y="${y + 20}" font-family="${FONT}" font-size="12" letter-spacing="0.5"
           fill="rgba(255,255,255,0.75)" text-anchor="middle">${label}</text>`;
 }
 
+// Mirrors the FULL (3x2 grid) layout in MutualSummaryWidget.tsx, which is what
+// the default 4x2 placement shows. Keep the two in sync when the layout changes.
+const COL = [72, 180, 288];
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <defs>
@@ -39,17 +42,18 @@ const svg = `<?xml version="1.0" encoding="UTF-8"?>
 
   <rect x="0" y="0" width="${W}" height="${H}" rx="32" ry="32" fill="url(#bg)"/>
 
-  <text x="28" y="48" font-family="${FONT}" font-size="19" font-weight="700"
+  <text x="26" y="42" font-family="${FONT}" font-size="18" font-weight="700"
         letter-spacing="1" fill="#FFFFFF">Mutual</text>
-  <text x="${W - 28}" y="48" font-family="${FONT}" font-size="15"
-        fill="rgba(255,255,255,0.75)" text-anchor="end">default</text>
+  <text x="${W - 26}" y="42" font-family="${FONT}" font-size="13"
+        fill="rgba(255,255,255,0.6)" text-anchor="end">Account 1 &#183; today</text>
 
-  ${stat(72, '1.2K', 'FOLLOWERS')}
-  ${stat(180, '184', 'NOT BACK')}
-  ${stat(288, '312', 'FANS')}
+  ${stat(COL[0], 104, '949', 'FOLLOWERS')}
+  ${stat(COL[1], 104, '1.7K', 'FOLLOWING')}
+  ${stat(COL[2], 104, '790', 'MUTUAL')}
 
-  <text x="28" y="192" font-family="${FONT}" font-size="15"
-        fill="rgba(255,255,255,0.75)">Updated today</text>
+  ${stat(COL[0], 182, '980', 'NOT BACK')}
+  ${stat(COL[1], 182, '159', 'FANS')}
+  ${stat(COL[2], 182, '45%', 'FOLLOW-BACK')}
 </svg>`;
 
 async function main() {

@@ -20,11 +20,23 @@ import { MutualSummaryWidget } from './MutualSummaryWidget';
 
 const WIDGET_NAME = 'MutualSummary';
 
-/** Shared renderer, also used by `requestWidgetUpdate` from the app side. */
+/**
+ * Shared renderer, also used by `requestWidgetUpdate` from the app side.
+ * `info` carries the launcher's MEASURED size (dp) so the widget can pick a
+ * compact or full layout — without it the widget always drew the full grid and
+ * looked empty at small sizes.
+ */
 export function renderMutualWidget(
   summary: Awaited<ReturnType<typeof dataStore.getWidgetSummary>>,
+  info?: { width: number; height: number },
 ) {
-  return <MutualSummaryWidget summary={summary} />;
+  return (
+    <MutualSummaryWidget
+      summary={summary}
+      width={info?.width}
+      height={info?.height}
+    />
+  );
 }
 
 export const widgetTaskHandler = async (
@@ -42,7 +54,7 @@ export const widgetTaskHandler = async (
       case 'WIDGET_CLICK': {
         // Plaintext, aggregate-only read — no decrypt, no master key needed.
         const summary = await dataStore.getWidgetSummary();
-        props.renderWidget(renderMutualWidget(summary));
+        props.renderWidget(renderMutualWidget(summary, props.widgetInfo));
         break;
       }
       case 'WIDGET_DELETED':

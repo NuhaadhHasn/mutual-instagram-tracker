@@ -30,7 +30,7 @@
         "backgroundColor": "#E1306C"
       },
       "package": "com.nuhaadh.mutual",
-      "versionCode": 4,
+      "versionCode": 5,
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
         "android.permission.INTERNET",
@@ -75,14 +75,16 @@
             {
               "name": "MutualSummary",
               "label": "Mutual",
-              "description": "Followers, unfollowers and fans at a glance",
-              "minWidth": "180dp",
-              "minHeight": "110dp",
-              "targetCellWidth": 3,
+              "description": "Followers, unfollowers and fans at a glance. Resize for more detail.",
+              "minWidth": "110dp",
+              "minHeight": "40dp",
+              "targetCellWidth": 4,
               "targetCellHeight": 2,
               "previewImage": "./assets/widget-preview.png",
               "resizeMode": "horizontal|vertical",
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "maxResizeWidth": "360dp",
+              "maxResizeHeight": "200dp"
             }
           ]
         }
