@@ -25,6 +25,10 @@ interface AppState {
   storageEncrypted: boolean;
   // Local notification reminder frequency in days; 0 = off (#10)
   notificationFrequency: number;
+  // D3: whether the OS actually applied the screenshot block. `blockScreenshots`
+  // is only the user's INTENT — this is the observed result, so the UI can stop
+  // claiming protection that isn't in force.
+  screenshotGuardFailed: boolean;
   // Home-screen widget opt-in (C10)
   widgetEnabled: boolean;
   // Recent search terms (#11)
@@ -47,6 +51,7 @@ interface AppState {
   setWipeThreshold: (n: number) => void;
   setStorageEncrypted: (enabled: boolean) => void;
   setNotificationFrequency: (days: number) => void;
+  setScreenshotGuardFailed: (failed: boolean) => void;
   setWidgetEnabled: (enabled: boolean) => void;
   setRecentSearches: (searches: string[]) => void;
   setAccounts: (accounts: Account[]) => void;
@@ -69,6 +74,7 @@ export const useAppStore = create<AppState>((set) => ({
   wipeThreshold: 10,
   storageEncrypted: false,
   notificationFrequency: 0,
+  screenshotGuardFailed: false,
   widgetEnabled: false,
   recentSearches: [],
   accounts: [],
@@ -89,6 +95,8 @@ export const useAppStore = create<AppState>((set) => ({
   setStorageEncrypted: (storageEncrypted) => set({ storageEncrypted }),
   setNotificationFrequency: (notificationFrequency) =>
     set({ notificationFrequency }),
+  setScreenshotGuardFailed: (screenshotGuardFailed) =>
+    set({ screenshotGuardFailed }),
   setWidgetEnabled: (widgetEnabled) => set({ widgetEnabled }),
   setRecentSearches: (recentSearches) => set({ recentSearches }),
   setAccounts: (accounts) => set({ accounts }),

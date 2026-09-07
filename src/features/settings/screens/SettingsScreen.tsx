@@ -151,6 +151,8 @@ export default function SettingsScreen({ navigation }: any) {
   const setUnfollowed = useAppStore((s) => s.setUnfollowed);
   const reset = useAppStore((s) => s.reset);
   const blockScreenshots = useAppStore((s) => s.blockScreenshots);
+  // D3: the OBSERVED result of the screenshot block, not the preference.
+  const screenshotGuardFailed = useAppStore((s) => s.screenshotGuardFailed);
   const setBlockScreenshots = useAppStore((s) => s.setBlockScreenshots);
   const appLock = useAppStore((s) => s.appLock);
   const setAppLock = useAppStore((s) => s.setAppLock);
@@ -1464,8 +1466,16 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
           <View style={styles.toggleText}>
             <Text style={styles.rowTitle}>Block screenshots</Text>
-            <Text style={styles.rowSubtitle}>
-              Hide the app from screenshots & screen recording
+            <Text
+              style={[
+                styles.rowSubtitle,
+                // D3: never imply protection that the OS refused to apply.
+                blockScreenshots && screenshotGuardFailed && { color: colors.warning },
+              ]}
+            >
+              {blockScreenshots && screenshotGuardFailed
+                ? "Couldn't be applied on this device — not protected"
+                : 'Hide the app from screenshots & screen recording'}
             </Text>
           </View>
           <Switch
