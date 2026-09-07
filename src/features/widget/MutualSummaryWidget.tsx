@@ -1,5 +1,10 @@
 import React from 'react';
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
+import {
+  FlexWidget,
+  OverlapWidget,
+  SvgWidget,
+  TextWidget,
+} from 'react-native-android-widget';
 import type { ColorProp } from 'react-native-android-widget';
 
 import type { WidgetSummary } from '../../shared/types';
@@ -87,6 +92,8 @@ export const INK_LIGHT: Skin = {
 const COMPACT_MAX_HEIGHT = 110;
 /** Below this width (dp) three columns would be unreadable. */
 const COMPACT_MAX_WIDTH = 160;
+/** At/above this height the ladder adds the ratio ring and XL type. */
+const HEADROOM_XL = 260;
 const HEADROOM_TALL = 168;
 const HEADROOM_MID = 140;
 
@@ -96,19 +103,55 @@ interface Profile {
   hero: number;
   stat: number;
   showAccount: boolean;
+  /** XL only: the follow-back ratio ring, mirroring the in-app RatioRing (C12). */
+  ring: number;
 }
 
-/** Type/space ladder by measured height. Real steps, not two unbridged sizes. */
+/**
+ * Type/space ladder by measured height. Real steps, not two unbridged sizes.
+ *
+ * The XL rung exists because the ladder used to top out at 168dp: resized to
+ * ~366dp on device, a 168dp-tuned block left ~270dp of empty space and read as
+ * sparse rather than deliberate. XL scales the type up AND earns the height by
+ * adding the ratio ring, so every one of the six numbers appears exactly once:
+ * hero = unfollowers, ring = follow-back %, ring caption = following,
+ * support row = followers / mutual / fans.
+ */
 function profileFor(h: number): Profile {
+  if (h >= HEADROOM_XL) {
+    return { pad: 20, gap: 24, hero: 48, stat: 24, showAccount: true, ring: 104 };
+  }
   if (h >= HEADROOM_TALL) {
-    return { pad: 16, gap: 26, hero: 34, stat: 19, showAccount: true };
+    return { pad: 16, gap: 26, hero: 34, stat: 19, showAccount: true, ring: 0 };
   }
   if (h >= HEADROOM_MID) {
-    return { pad: 14, gap: 18, hero: 30, stat: 18, showAccount: true };
+    return { pad: 14, gap: 18, hero: 30, stat: 18, showAccount: true, ring: 0 };
   }
   // Tightest FULL size: 110dp - 24 padding = 86dp of content; tier1 44 + gap 8
   // + tier2 33 = 85. Fits only because the account line is dropped here.
-  return { pad: 12, gap: 8, hero: 26, stat: 17, showAccount: false };
+  return { pad: 12, gap: 8, hero: 26, stat: 17, showAccount: false, ring: 0 };
+}
+
+/**
+ * Follow-back ratio ring as an inline SVG string (SvgWidget takes a raw string,
+ * so no asset and no network — which matters, INTERNET is stripped from the
+ * manifest). The percentage itself stays a real TextWidget overlaid on top:
+ * androidsvg's <text> font resolution is the one part of this not worth betting
+ * a 20-minute build on.
+ */
+function ringSvg(pct: number, track: string, accent: string, d: number): string {
+  const stroke = Math.max(7, Math.round(d * 0.085));
+  const r = (d - stroke) / 2;
+  const c = d / 2;
+  const circ = 2 * Math.PI * r;
+  const on = (Math.max(0, Math.min(100, pct)) / 100) * circ;
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${d}" height="${d}" viewBox="0 0 ${d} ${d}">` +
+    `<circle cx="${c}" cy="${c}" r="${r.toFixed(2)}" fill="none" stroke="${track}" stroke-width="${stroke}"/>` +
+    `<circle cx="${c}" cy="${c}" r="${r.toFixed(2)}" fill="none" stroke="${accent}" stroke-width="${stroke}" ` +
+    `stroke-linecap="round" stroke-dasharray="${on.toFixed(1)} ${(circ - on).toFixed(1)}" ` +
+    `transform="rotate(-90 ${c} ${c})"/></svg>`
+  );
 }
 
 /** One support cell. `width: 0` + `flex: 1` == Android `0dp` + `layout_weight=1`. */
@@ -379,10 +422,92 @@ export function MutualSummaryWidget({
     );
   }
 
-  // ---- TIER 2: three exact columns; wrap_content so slack goes to tier 1. --
+  // ---- TIER 1.5 (XL only): the ratio ring earns the extra height. ---------
+  // OverlapWidget children all pin TOP|START (they get LinearLayout params, so
+  // no gravity), which is why the % sits in a full-size FlexWidget layer above
+  // the SVG rather than being positioned directly. The explicit width/height on
+  // the OverlapWidget is mandatory — it defaults to wrap_content.
+  const ringTier =
+    p.ring > 0 ? (
+      <FlexWidget
+        style={{
+          width: 'match_parent',
+          height: 'wrap_content',
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexGap: 16,
+        }}
+      >
+        <OverlapWidget style={{ width: p.ring, height: p.ring }}>
+          <SvgWidget
+            svg={ringSvg(summary.followBackRatio, s.divider, s.accent, p.ring)}
+            style={{ width: p.ring, height: p.ring }}
+          />
+          <FlexWidget
+            style={{
+              width: 'match_parent',
+              height: 'match_parent',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <TextWidget
+              text={`${Math.round(summary.followBackRatio)}%`}
+              maxLines={1}
+              allowFontScaling={false}
+              style={{
+                fontSize: 22,
+                fontWeight: '600',
+                color: s.value,
+                letterSpacing: -0.4,
+              }}
+            />
+          </FlexWidget>
+        </OverlapWidget>
+
+        <FlexWidget
+          style={{
+            width: 0,
+            flex: 1,
+            height: 'wrap_content',
+            flexDirection: 'column',
+          }}
+        >
+          <TextWidget
+            text="Follow-back rate"
+            maxLines={1}
+            truncate="END"
+            style={{
+              width: 'match_parent',
+              textAlign: 'left',
+              fontSize: 13,
+              fontWeight: '500',
+              color: s.label,
+              letterSpacing: 0.3,
+            }}
+          />
+          <TextWidget
+            text={`${formatWidgetCount(summary.following)} following`}
+            maxLines={1}
+            truncate="END"
+            style={{
+              width: 'match_parent',
+              textAlign: 'left',
+              fontSize: 12,
+              fontWeight: '400',
+              color: s.dim,
+            }}
+          />
+        </FlexWidget>
+      </FlexWidget>
+    ) : null;
+
+  // ---- TIER 2: three exact columns; wrap_content so slack stays balanced. --
   return (
     <Shell s={s} pad={p.pad} gap={p.gap}>
       {tier1}
+      {ringTier}
       <FlexWidget
         style={{
           width: 'match_parent',
