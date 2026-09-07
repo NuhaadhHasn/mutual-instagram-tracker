@@ -13,7 +13,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as StoreReview from 'expo-store-review';
-import { instagramParser } from '../../../services/parsers/instagramParser';
+import {
+  instagramParser,
+  isPickerCancelled,
+} from '../../../services/parsers/instagramParser';
 import { dataStore } from '../../../services/storage/dataStore';
 import { useAppStore } from '../../../shared/store/appStore';
 import { FollowerData, HistoricalSnapshot } from '../../../shared/types';
@@ -113,17 +116,19 @@ export default function ImportScreen({ navigation }: any) {
           .catch(() => {});
       }
     } catch (error: any) {
+      // Backing out of the picker is a normal action: no log, no haptic, no
+      // dialog. Detected via a TYPED sentinel - this used to string-match the
+      // error message, so rewording it would have started showing users an
+      // "Import failed" dialog for simply cancelling.
+      if (isPickerCancelled(error)) return;
       console.error('Import error:', error);
-      const msg = error?.message || 'Failed to import Instagram data.';
-      if (msg !== 'File selection cancelled') {
-        haptic.error();
-        dialog.alert({
-          title: 'Import failed',
-          message: msg,
-          icon: 'alert-circle',
-          iconColor: colors.error,
-        });
-      }
+      haptic.error();
+      dialog.alert({
+        title: 'Import failed',
+        message: error?.message || 'Failed to import Instagram data.',
+        icon: 'alert-circle',
+        iconColor: colors.error,
+      });
     } finally {
       setIsProcessing(false);
     }

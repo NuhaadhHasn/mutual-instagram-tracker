@@ -9,6 +9,26 @@ import { computeDerived } from './computeFollowerData';
 const MAX_ZIP_BYTES = 100 * 1024 * 1024;
 const MAX_USERS = 2_000_000;
 
+/**
+ * Backing out of the system file picker is a NORMAL user action, not a failure.
+ * It still has to unwind the async parse, so it travels as a throw — but callers
+ * must be able to recognise it WITHOUT string-matching the message. Matching on
+ * text was fragile: rewording the message silently turned every cancel into an
+ * "Import failed" dialog. Check with `isPickerCancelled(err)` instead.
+ */
+export class PickerCancelledError extends Error {
+  readonly cancelled = true as const;
+  constructor() {
+    super('File selection cancelled');
+    this.name = 'PickerCancelledError';
+  }
+}
+
+/** True when the user simply dismissed the picker. Safe on unknown values. */
+export function isPickerCancelled(error: unknown): boolean {
+  return error instanceof PickerCancelledError;
+}
+
 export class InstagramDataParser {
   /**
    * Pick and parse Instagram data export ZIP file
@@ -22,7 +42,8 @@ export class InstagramDataParser {
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
-        throw new Error('File selection cancelled');
+        // Normal user action - not an error. See PickerCancelledError above.
+        throw new PickerCancelledError();
       }
 
       const uri = result.assets[0].uri;
@@ -44,7 +65,12 @@ export class InstagramDataParser {
       // Unzip and parse
       return await this.parseZipContent(fileContent);
     } catch (error) {
-      console.error('Error picking/parsing file:', error);
+      // A cancel is not a failure - logging it as one produced a red LogBox in
+      // dev every time the user backed out of the picker. Still rethrow so the
+      // caller can unwind, just quietly.
+      if (!isPickerCancelled(error)) {
+        console.error('Error picking/parsing file:', error);
+      }
       throw error;
     }
   }
