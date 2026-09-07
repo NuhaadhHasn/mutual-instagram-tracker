@@ -72,8 +72,19 @@ export default function ImportScreen({ navigation }: any) {
         followerUsernames: data.followers.map((u) => u.username),
         followingUsernames: data.following.map((u) => u.username),
       };
-      await dataStore.saveSnapshot(snapshot);
-      setHistory(await dataStore.getHistory());
+      // The snapshot is DERIVED, secondary data — `follower_data` above is the
+      // source of truth and is already committed by this point. So a snapshot
+      // failure must NOT fail the whole import: `saveSnapshot` re-throws, and
+      // letting that escape used to report the entire import as failed even
+      // though the follower data had saved fine, leaving the store updated but
+      // the user told it had not been. Best-effort, and history just misses one
+      // entry (the next import records normally).
+      try {
+        await dataStore.saveSnapshot(snapshot);
+        setHistory(await dataStore.getHistory());
+      } catch (snapErr) {
+        console.error('Import succeeded but snapshot/history write failed:', snapErr);
+      }
 
       // #10: the new snapshot is the fresh reminder anchor — reschedule.
       import('../../../services/notifications')

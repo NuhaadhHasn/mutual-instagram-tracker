@@ -88,9 +88,40 @@ const SENSITIVE_BASE_KEYS = [
   KEYS.UNFOLLOWED,
 ];
 
-// follower_data is the large blob (can be several MB) — use the async,
-// yield-first crypto variants for it so a busy overlay can paint first.
-const isLargeKey = (base: string): boolean => base === KEYS.FOLLOWER_DATA;
+// follower_data and history are the large blobs (can be several MB) — use the
+// async, yield-first crypto variants for them so a busy overlay can paint first
+// and hydration never blocks the JS thread.
+// NOTE: history was previously excluded here, which meant a 50-snapshot history
+// carrying C5 username sets took the SYNCHRONOUS decrypt path and blocked the
+// main thread for ~1s+ at every launch. Keep both keys listed.
+const isLargeKey = (base: string): boolean =>
+  base === KEYS.FOLLOWER_DATA || base === KEYS.HISTORY;
+
+// How many of the most recent snapshots keep their C5 username sets.
+// HistoryScreen only ever diffs the two most recent snapshots
+// (`ordered[last]` vs `ordered[last-1]`), so retaining the sets on all 50 was
+// pure dead weight — measured at ~84% of the entire stored payload. 3 gives the
+// feature one spare snapshot of headroom. Older snapshots stay count-only,
+// which HistoryScreen already handles (the sets are optional by design).
+const SNAPSHOT_USERNAME_KEEP = 3;
+
+/**
+ * Strip the C5 username sets from all but the newest `SNAPSHOT_USERNAME_KEEP`
+ * snapshots. Applied on every write, so it also shrinks histories that were
+ * saved before this pruning existed. Never mutates the input.
+ */
+const pruneSnapshotUsernames = (
+  history: HistoricalSnapshot[],
+): HistoricalSnapshot[] => {
+  const cutoff = history.length - SNAPSHOT_USERNAME_KEEP;
+  if (cutoff <= 0) return history;
+  return history.map((snap, i) => {
+    if (i >= cutoff) return snap;
+    if (!snap.followerUsernames && !snap.followingUsernames) return snap;
+    const { followerUsernames, followingUsernames, ...rest } = snap;
+    return rest;
+  });
+};
 
 export class DataStore {
   // Cached active account id so the (synchronous-feeling) key builder is cheap.
@@ -524,8 +555,11 @@ export class DataStore {
     try {
       const history = await this.getHistory();
       history.push(snapshot);
-      const trimmed = history.slice(-50);
-      await this.writeValue(await this.k(KEYS.HISTORY), trimmed);
+      // Cap at 50 snapshots, then drop the C5 username sets from all but the
+      // newest few (see pruneSnapshotUsernames). `large: true` keeps the
+      // encrypt off the main thread.
+      const trimmed = pruneSnapshotUsernames(history.slice(-50));
+      await this.writeValue(await this.k(KEYS.HISTORY), trimmed, true);
     } catch (error) {
       console.error('Error saving snapshot:', error);
       throw error;
@@ -537,7 +571,12 @@ export class DataStore {
    */
   async getHistory(): Promise<HistoricalSnapshot[]> {
     try {
-      const data = await this.readValue<HistoricalSnapshot[]>(await this.k(KEYS.HISTORY));
+      // `large: true` — history can be megabytes; the sync decrypt path blocked
+      // the JS thread for ~1s+ at hydration.
+      const data = await this.readValue<HistoricalSnapshot[]>(
+        await this.k(KEYS.HISTORY),
+        true,
+      );
       return data ?? [];
     } catch (error) {
       console.error('Error getting history:', error);
