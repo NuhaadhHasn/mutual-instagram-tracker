@@ -101,10 +101,10 @@ interface Profile {
 /** Type/space ladder by measured height. Real steps, not two unbridged sizes. */
 function profileFor(h: number): Profile {
   if (h >= HEADROOM_TALL) {
-    return { pad: 16, gap: 14, hero: 34, stat: 19, showAccount: true };
+    return { pad: 16, gap: 26, hero: 34, stat: 19, showAccount: true };
   }
   if (h >= HEADROOM_MID) {
-    return { pad: 14, gap: 12, hero: 30, stat: 18, showAccount: true };
+    return { pad: 14, gap: 18, hero: 30, stat: 18, showAccount: true };
   }
   // Tightest FULL size: 110dp - 24 padding = 86dp of content; tier1 44 + gap 8
   // + tier2 33 = 85. Fits only because the account line is dropped here.
@@ -189,6 +189,12 @@ function Shell({
         borderRadius: 16,
         backgroundColor: s.shell,
         flexGap: gap,
+        // Centre the whole content block. Previously tier 1 had flex:1 and so
+        // ate ALL the slack, which bottom-stranded everything: at a tall size
+        // that left ~460px of dead space above the hero and read as broken.
+        // Neither tier flexes now, so leftover height splits evenly above and
+        // below and the block stays a deliberate, centred unit at every size.
+        justifyContent: 'center',
       }}
     >
       {children}
@@ -225,10 +231,8 @@ export function MutualSummaryWidget({
         <FlexWidget
           style={{
             width: 'match_parent',
-            height: 0,
-            flex: 1,
+            height: 'wrap_content',
             flexDirection: 'column',
-            justifyContent: 'center',
           }}
         >
           <TextWidget
@@ -268,8 +272,7 @@ export function MutualSummaryWidget({
     <FlexWidget
       style={{
         width: 'match_parent',
-        height: 0,
-        flex: 1,
+        height: 'wrap_content', // must NOT flex — see justifyContent in Shell
         flexDirection: 'row',
         alignItems: 'flex-end', // hero + meta share one bottom rail
       }}
@@ -312,8 +315,9 @@ export function MutualSummaryWidget({
         />
       </FlexWidget>
 
-      {/* height match_parent + justifyContent flex-start pins this to the TOP
-          while the hero bottom-aligns (on a column, justifyContent = vertical). */}
+      {/* match_parent here resolves against tier 1's own wrap_content height,
+          so the brand/meta block tops out level with the hero rather than
+          floating at the top of the whole widget. */}
       <FlexWidget
         style={{
           width: 0,
