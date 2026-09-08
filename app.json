@@ -30,7 +30,7 @@
         "backgroundColor": "#E1306C"
       },
       "package": "com.nuhaadh.mutual",
-      "versionCode": 8,
+      "versionCode": 9,
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
         "android.permission.INTERNET",
@@ -83,8 +83,8 @@
               "previewImage": "./assets/widget-preview.png",
               "resizeMode": "horizontal|vertical",
               "updatePeriodMillis": 1800000,
-              "maxResizeWidth": "360dp",
-              "maxResizeHeight": "200dp"
+              "maxResizeWidth": "420dp",
+              "maxResizeHeight": "300dp"
             }
           ]
         }

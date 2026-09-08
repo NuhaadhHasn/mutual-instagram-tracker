@@ -92,8 +92,18 @@ export const INK_LIGHT: Skin = {
 const COMPACT_MAX_HEIGHT = 110;
 /** Below this width (dp) three columns would be unreadable. */
 const COMPACT_MAX_WIDTH = 160;
-/** At/above this height the ladder adds the ratio ring and XL type. */
-const HEADROOM_XL = 260;
+/**
+ * At/above this height the ladder adds the ratio ring and XL type.
+ *
+ * Sized from a real measurement, not a guess: on the S9+ (density 280, so
+ * 1.75 px/dp) the XL block measured 223dp of content + 40dp padding = ~263dp,
+ * which filled only 72% of a 366dp-tall widget and read as airy. `app.json` now
+ * caps maxResizeHeight at 300dp and the ring is trimmed to 92dp, putting the XL
+ * block near ~251dp — so across its 255-300dp band the widget sits 84-98% full
+ * instead of two-thirds empty. The cap is the honest fix: all six numbers are
+ * already on screen at XL, so extra height could only ever be padding.
+ */
+const HEADROOM_XL = 255;
 const HEADROOM_TALL = 168;
 const HEADROOM_MID = 140;
 
@@ -119,7 +129,7 @@ interface Profile {
  */
 function profileFor(h: number): Profile {
   if (h >= HEADROOM_XL) {
-    return { pad: 20, gap: 24, hero: 48, stat: 24, showAccount: true, ring: 104 };
+    return { pad: 20, gap: 20, hero: 46, stat: 23, showAccount: true, ring: 92 };
   }
   if (h >= HEADROOM_TALL) {
     return { pad: 16, gap: 26, hero: 34, stat: 19, showAccount: true, ring: 0 };
