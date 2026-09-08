@@ -157,7 +157,7 @@ Followers / Following / Mutual all run on the **same generic component** (`Users
 - [ ] Splash → onboarding transition: no white flash (expo-splash-screen API)
 
 ### Performance
-The old "feels kinda slow" ceiling is **addressed in code**: the C15e work all shipped (Zustand selectors, memoized rows, `getItemLayout`, FlashList, inline-component extraction), and the 2026-07-11 full E2E device pass hit no stutters. It has never been **profiled** (C15e-MEASURE is still open), so if a specific interaction still freezes (>500ms), screenshot it and we'll fix that one first.
+The old "feels kinda slow" ceiling is **fixed and measured**. The C15e work all shipped (Zustand selectors, memoized rows, `getItemLayout`, FlashList, inline-component extraction), and C15e-MEASURE ran on a Galaxy S9+ on 2026-09-07: `dumpsys gfxinfo` over the 980-row list recorded **608 frames, 3 janky = 0.49%** (50th 7 ms / 90th 10 ms / 95th 11 ms / 99th 13 ms) with **0 missed vsyncs**, and cold start averaged **1039 ms**. The real 629 KB ZIP parses in **31 ms warm / 157 ms cold**, so C15e-7 (off-thread parse) is closed as NOT NEEDED — the biggest remaining main-thread cost is crypto-js AES (57-83 ms encrypt / 103-141 ms decrypt), and only with encrypt-at-rest on. If a specific interaction still freezes (>500ms), screenshot it and we'll fix that one first.
 
 If any of these doesn't behave, screenshot the issue or copy the error message and we'll iterate.
 
@@ -182,18 +182,19 @@ eas build --platform android --profile preview
 The "preview" profile produces an APK suitable for sideloading and sharing with friends. When it's time to submit to the Play Store, you'll switch to `--profile production` which builds an AAB (Android App Bundle) instead.
 ### C10 home-screen widget (APK only — cannot be tested in Expo Go)
 
-> The native module is guarded in `src/services/widget.ts`; in Expo Go the Settings toggle just shows a "Widget unavailable" dialog. **All of the below needs the preview APK.** Nothing here has been device-verified yet.
+> The native module is guarded in `src/services/widget.ts`; in Expo Go the Settings toggle just shows a "Widget unavailable" dialog. **All of the below needs the preview APK.** Most of it is now device-verified (Galaxy S9+ / Android 10, versionCode 10, 2026-09-08): the `[x]` boxes are proven, the `[ ]` boxes are genuinely still unchecked.
 
-- [ ] Settings → Privacy → **Home-screen widget** row exists (between "Encrypt data at rest" and "Import reminders") and is **OFF by default**
-- [ ] Toggle it ON — no error dialog in a real build
-- [ ] Long-press the Android home screen → **Widgets** → **Mutual** appears in the picker with a preview image
-- [ ] Drop the widget (3×2 cell) — it renders followers / following / unfollowers / mutual / fans, the follow-back ratio, the last-updated date and the account name
-- [ ] **Counts only — no usernames anywhere on the widget** (this is the privacy invariant)
-- [ ] Import a fresh ZIP → the widget numbers update
+- [x] Settings → Privacy → **Home-screen widget** row exists (between "Encrypt data at rest" and "Import reminders") and is **OFF by default**
+- [x] Toggle it ON — no error dialog in a real build
+- [x] Long-press the Android home screen → **Widgets** → **Mutual** appears in the picker with a preview image
+- [x] Drop the widget (default target is a **4×2** cell) — at that size it renders the hero (unfollowers) + "Mutual" + the account name + the last-updated date, over a three-column row of followers / mutual / fans. **Following and the follow-back % are deliberately not printed there** — `following = mutual + unfollowers`, so the four shown numbers determine all six
+- [x] **Grow it past ~255dp tall** → the XL rung adds the **follow-back ratio ring** (inline SVG, % centred inside) with "Follow-back rate / N following" beside it, so all six numbers appear exactly once. Shrink it back and the ring disappears
+- [x] **Counts only — no usernames anywhere on the widget** (this is the privacy invariant)
+- [x] Import a fresh ZIP → the widget numbers update
+- [x] Resize the widget horizontally/vertically → layout stays legible; the type and the inter-tier gap scale with the measured height
 - [ ] Switch account (Dashboard chip) → the widget shows the new account's numbers
 - [ ] Turn on the app lock (D1) and lock the app → widget still shows its counts (expected: aggregates are safe on a lock screen)
 - [ ] **Turn on "Encrypt data at rest" (D2) → the widget must still render.** The `widget_summary` key is deliberately stored in plaintext because the headless render task is a cold JS context with no master key — **a blank widget here is the bug to watch for**
-- [ ] Resize the widget horizontally/vertically → layout stays legible
 - [ ] Toggle the Settings switch back OFF → the widget stops updating
 - [ ] Settings → **Clear All Data** → the widget summary is cleared too
 

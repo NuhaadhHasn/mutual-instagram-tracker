@@ -101,7 +101,9 @@ instagram-tracker/
     │   ├── history/
     │   ├── import/
     │   ├── settings/
-    │   └── onboarding/
+    │   ├── search/
+    │   ├── onboarding/
+    │   └── widget/                # Android home-screen widget UI
     ├── services/
     │   ├── parsers/instagramParser.ts    # ZIP parsing
     │   └── storage/dataStore.ts          # AsyncStorage wrapper + migration
