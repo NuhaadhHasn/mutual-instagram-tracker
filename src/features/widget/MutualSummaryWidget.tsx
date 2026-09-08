@@ -107,6 +107,11 @@ const HEADROOM_XL = 255;
 const HEADROOM_TALL = 168;
 const HEADROOM_MID = 140;
 
+/** Small numeric clamp — used to scale gaps with the widget's measured height. */
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}
+
 interface Profile {
   pad: number;
   gap: number;
@@ -129,10 +134,32 @@ interface Profile {
  */
 function profileFor(h: number): Profile {
   if (h >= HEADROOM_XL) {
-    return { pad: 20, gap: 20, hero: 46, stat: 23, showAccount: true, ring: 92 };
+    // Gap SCALES with height instead of being fixed. `maxResizeHeight` in
+    // app.json caps this at 300dp — but that attribute is API 31 (Android 12)
+    // and is SILENTLY IGNORED on older devices (confirmed on an Android 10 S9+:
+    // dumpsys shows min/minResize but no maxResize). So the layout cannot rely
+    // on the cap and has to fill whatever height it is given.
+    // Intrinsic XL content is ~171dp excluding padding and gaps; with 2 gaps,
+    // gap = (h - 40 padding - 171) / 2 keeps the block filling the widget.
+    return {
+      pad: 20,
+      gap: clamp(Math.round((h - 211) / 2), 20, 80),
+      hero: 46,
+      stat: 23,
+      showAccount: true,
+      ring: 92,
+    };
   }
   if (h >= HEADROOM_TALL) {
-    return { pad: 16, gap: 26, hero: 34, stat: 19, showAccount: true, ring: 0 };
+    // Same treatment, one gap: intrinsic content ~112dp excluding padding.
+    return {
+      pad: 16,
+      gap: clamp(h - 32 - 112, 22, 72),
+      hero: 34,
+      stat: 19,
+      showAccount: true,
+      ring: 0,
+    };
   }
   if (h >= HEADROOM_MID) {
     return { pad: 14, gap: 18, hero: 30, stat: 18, showAccount: true, ring: 0 };
