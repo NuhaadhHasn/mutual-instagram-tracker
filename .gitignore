@@ -1,7 +1,11 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
 # dependencies
-node_modules/
+# Anchored to the repo root on purpose: an unanchored `node_modules/` matches at
+# ANY depth, which silently excluded the web build's own assets (Expo emits fonts
+# and nav icons under dist/assets/node_modules/...). That shipped a demo whose
+# icon font 404'd on GitHub Pages while working fine locally.
+/node_modules/
 
 # Expo
 .expo/
