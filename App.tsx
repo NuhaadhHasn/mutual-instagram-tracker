@@ -28,8 +28,12 @@ import { dataStore } from './src/services/storage/dataStore';
 import LockScreen from './src/features/lock/LockScreen';
 import ErrorBoundary from './src/shared/components/ErrorBoundary';
 import { canLockApp } from './src/shared/utils/platformCapabilities';
+import { useIsDesktop } from './src/shared/hooks/useIsDesktop';
+import { Spacing } from './src/shared/constants/theme';
 
 const ONBOARDING_KEY = '@instagram_tracker:onboarding_done';
+// Width of the desktop side navigation.
+const SIDEBAR_WIDTH = 232;
 // Re-lock when the app returns to the foreground after being away this long.
 const LOCK_GRACE_MS = 15_000;
 
@@ -173,11 +177,20 @@ function ThemedApp() {
 
 function TabsNavigator() {
   const { colors } = useTheme();
+  // Desktop swaps the bottom tab bar for a sidebar. React Navigation 7
+  // supports this natively via tabBarPosition, so there is no second
+  // navigator to keep in sync — the same five screens, laid out differently.
+  const isDesktop = useIsDesktop();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarPosition: isDesktop ? 'left' : 'bottom',
+        // 'material' is what gives the left rail its full-height list look;
+        // the default 'uikit' variant is built for a bottom bar.
+        tabBarVariant: isDesktop ? 'material' : 'uikit',
+        tabBarLabelPosition: isDesktop ? 'beside-icon' : 'below-icon',
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
 
@@ -197,23 +210,35 @@ function TabsNavigator() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.tabBarInactive,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 2,
-        },
-        tabBarStyle: {
-          backgroundColor: colors.tabBar,
-          borderTopWidth: 0,
-          height: 70,
-          paddingBottom: 10,
-          paddingTop: 8,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 10,
-        },
+        tabBarLabelStyle: isDesktop
+          ? { fontSize: 14, fontWeight: '600' }
+          : { fontSize: 11, fontWeight: '600', marginTop: 2 },
+        tabBarStyle: isDesktop
+          ? {
+              backgroundColor: colors.tabBar,
+              // A full-height rail down the left edge, separated by a hairline
+              // rather than the phone bar's drop shadow.
+              width: SIDEBAR_WIDTH,
+              // minWidth too: the navigator applies its own Material default
+              // (360dp) as minWidth, which would otherwise win over `width`.
+              minWidth: SIDEBAR_WIDTH,
+              borderTopWidth: 0,
+              borderRightWidth: 1,
+              borderRightColor: colors.border,
+              paddingTop: Spacing.md,
+            }
+          : {
+              backgroundColor: colors.tabBar,
+              borderTopWidth: 0,
+              height: 70,
+              paddingBottom: 10,
+              paddingTop: 8,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -4 },
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+              elevation: 10,
+            },
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />

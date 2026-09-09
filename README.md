@@ -29,9 +29,17 @@ A privacy-first app, built with React Native and Expo, that helps you see who fo
 
 > Usernames in the Followers list are **redacted here for privacy** — the app shows real handles normally on your device. All other screens show aggregate numbers only.
 
+### Home-screen widget (Android)
+
+<p align="center">
+  <img src="docs/screenshots/widget.png" width="46%" alt="Android home-screen widget — unfollower count, follow-back ratio ring, and follower/mutual/fan totals" />
+</p>
+
+> Opt-in and off by default. It shows **counts only, never usernames** — a widget stays visible while the app is locked. It resizes: the smallest size is the headline number alone, and each step up adds the account line, the totals row, then the follow-back ring.
+
 ### Web
 
-The same app running in a browser — same parser, same data model, same screens.
+On a desktop browser the bottom tabs become side navigation and the grid widens — the same app, laid out for the screen it's on. Below 900px it falls back to the phone layout.
 
 <p align="center">
   <img src="docs/screenshots/web/web-dashboard.png" width="49%" alt="Web — dashboard stat grid" />
@@ -122,6 +130,8 @@ The browser versions are the same app — same parser, same data model, same scr
 | Import reminders | ✅ | — | Chrome dropped scheduled notifications; the rest need a push server |
 
 Storage differs underneath too: Android uses AsyncStorage, web uses IndexedDB. Key names are identical, so a backup JSON moves between them unchanged.
+
+Web also gains something the phone has no room for: at 900px and wider the bottom tab bar becomes a **sidebar** and the dashboard grid goes three across. The breakpoint is web-only by design — an Android tablet keeps the phone layout it was built and device-tested for.
 
 ## Development
 

@@ -33,6 +33,7 @@ import StatCardSkeleton from '../../../shared/components/skeletons/StatCardSkele
 import UserItemSkeleton from '../../../shared/components/skeletons/UserItemSkeleton';
 import ShareStatModal from '../../share/ShareStatModal';
 import { haptic } from '../../../shared/utils/haptics';
+import { useIsDesktop } from '../../../shared/hooks/useIsDesktop';
 
 type Styles = ReturnType<typeof makeStyles>;
 
@@ -104,6 +105,10 @@ export default function DashboardScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const isDesktop = useIsDesktop();
+  // Three across instead of two once there is room, so the grid fills the
+  // width instead of stretching five cards over it.
+  const desktopCell = isDesktop ? { width: '33.333%' as const } : null;
 
   const handleNavWithHaptic = (target: string) => {
     haptic.tap();
@@ -292,7 +297,7 @@ export default function DashboardScreen({ navigation }: any) {
         />
 
         <View style={styles.statsGrid}>
-          <AnimatedFadeSlide index={0} variant="scale" style={styles.statCell}>
+          <AnimatedFadeSlide index={0} variant="scale" style={[styles.statCell, desktopCell]}>
             <StatCard
               icon="people"
               title="Followers"
@@ -302,7 +307,7 @@ export default function DashboardScreen({ navigation }: any) {
               styles={styles}
             />
           </AnimatedFadeSlide>
-          <AnimatedFadeSlide index={1} variant="scale" style={styles.statCell}>
+          <AnimatedFadeSlide index={1} variant="scale" style={[styles.statCell, desktopCell]}>
             <StatCard
               icon="person-add"
               title="Following"
@@ -312,7 +317,7 @@ export default function DashboardScreen({ navigation }: any) {
               styles={styles}
             />
           </AnimatedFadeSlide>
-          <AnimatedFadeSlide index={2} variant="scale" style={styles.statCell}>
+          <AnimatedFadeSlide index={2} variant="scale" style={[styles.statCell, desktopCell]}>
             <StatCard
               icon="person-remove"
               title="Unfollowers"
@@ -322,7 +327,7 @@ export default function DashboardScreen({ navigation }: any) {
               styles={styles}
             />
           </AnimatedFadeSlide>
-          <AnimatedFadeSlide index={3} variant="scale" style={styles.statCell}>
+          <AnimatedFadeSlide index={3} variant="scale" style={[styles.statCell, desktopCell]}>
             <StatCard
               icon="heart"
               title="Mutual"
@@ -332,7 +337,7 @@ export default function DashboardScreen({ navigation }: any) {
               styles={styles}
             />
           </AnimatedFadeSlide>
-          <AnimatedFadeSlide index={4} variant="scale" style={styles.statCell}>
+          <AnimatedFadeSlide index={4} variant="scale" style={[styles.statCell, desktopCell]}>
             <StatCard
               icon="heart-outline"
               title="Fans"
