@@ -1,0 +1,53 @@
+Mutual — run it on your own computer
+====================================
+
+Everything in this folder runs on your machine. Nothing is uploaded, and the
+app makes no network calls of its own.
+
+
+To start
+--------
+
+Windows      double-click  run-mutual.cmd
+macOS/Linux  run          ./run-mutual.sh   in a terminal
+
+Your browser opens at http://localhost:8321. Leave the small black window open
+while you use Mutual; closing it stops the app.
+
+You need either Node.js (nodejs.org) or Python (python.org) installed — most
+computers already have one. The launcher checks for both and tells you if
+neither is found.
+
+
+Why not just double-click index.html?
+-------------------------------------
+
+Opening the file directly gives the page a "file://" address, and browsers
+refuse to give those pages a database. Mutual would start but could not
+remember your import. Served from http://localhost it gets real, persistent
+storage — which is the whole point.
+
+
+Using it
+--------
+
+1. In Instagram: Settings -> Accounts Center -> Your information ->
+   Download your information. Choose JSON format.
+2. Wait for Instagram's email and download the ZIP.
+3. In Mutual, click Import and pick that ZIP.
+
+Your data is parsed in the browser and saved in that browser's local storage.
+It never leaves your computer.
+
+To install it like a real app, click the install icon in your browser's
+address bar ("Install this site as an app"). It then gets its own window and
+taskbar icon.
+
+
+Want the full version?
+----------------------
+
+The Android app has features a browser cannot offer — app lock, encryption at
+rest, screenshot blocking, and a home-screen widget:
+
+https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest

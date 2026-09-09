@@ -10,7 +10,9 @@
     "gen-icons": "node scripts/gen-icons.js",
     "gen-store-assets": "node scripts/gen-store-assets.js",
     "test": "jest",
-    "gen-widget-preview": "node scripts/gen-widget-preview.js"
+    "gen-widget-preview": "node scripts/gen-widget-preview.js",
+    "build:web": "node scripts/build-web.js",
+    "build:web:hosted": "node scripts/build-web.js --hosted"
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.12",
