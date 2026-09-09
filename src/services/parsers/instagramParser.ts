@@ -1,8 +1,7 @@
-import * as FileSystem from 'expo-file-system/legacy';
-import * as DocumentPicker from 'expo-document-picker';
 import JSZip from 'jszip';
 import { InstagramUser, FollowerData } from '../../shared/types';
 import { computeDerived } from './computeFollowerData';
+import { pickZip } from './pickZip';
 
 // Defensive limits (D8) — reject pathological inputs before they can OOM the JS
 // thread or hang the UI. A real IG export is a few MB; 100MB is a generous cap.
@@ -35,35 +34,28 @@ export class InstagramDataParser {
    */
   async pickAndParseZip(): Promise<FollowerData> {
     try {
-      // Pick ZIP file
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/zip',
-        copyToCacheDirectory: true,
-      });
+      // Pick ZIP file. The picker and the byte-read are platform-split — see
+      // pickZip.types.ts — so this method stays identical on native and web.
+      const picked = await pickZip();
 
-      if (result.canceled || !result.assets || result.assets.length === 0) {
+      if (!picked) {
         // Normal user action - not an error. See PickerCancelledError above.
         throw new PickerCancelledError();
       }
 
-      const uri = result.assets[0].uri;
-
       // Reject oversized files before reading them into memory (zip-bomb guard).
-      const info = await FileSystem.getInfoAsync(uri);
-      if (info.exists && typeof info.size === 'number' && info.size > MAX_ZIP_BYTES) {
+      if (picked.size !== undefined && picked.size > MAX_ZIP_BYTES) {
         throw new Error(
-          `That file is too large (${Math.round(info.size / 1024 / 1024)}MB). ` +
+          `That file is too large (${Math.round(picked.size / 1024 / 1024)}MB). ` +
             `Please pick your Instagram data ZIP (normally a few MB).`,
         );
       }
 
       // Read file
-      const fileContent = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const { data, base64 } = await picked.load();
 
       // Unzip and parse
-      return await this.parseZipContent(fileContent);
+      return await this.parseZipContent(data, base64);
     } catch (error) {
       // A cancel is not a failure - logging it as one produced a red LogBox in
       // dev every time the user backed out of the picker. Still rethrow so the
@@ -78,10 +70,14 @@ export class InstagramDataParser {
   /**
    * Parse ZIP file content
    */
-  private async parseZipContent(base64Content: string): Promise<FollowerData> {
+  private async parseZipContent(
+    content: string | Blob,
+    base64: boolean,
+  ): Promise<FollowerData> {
     try {
-      // Load ZIP
-      const zip = await JSZip.loadAsync(base64Content, { base64: true });
+      // Load ZIP. Native hands over a base64 string; web hands over the picked
+      // File directly, which JSZip reads as a Blob with no decoding step.
+      const zip = await JSZip.loadAsync(content, base64 ? { base64: true } : undefined);
 
       // Find and parse followers file
       const followersFile = zip.file(/followers_1\.json$/i)?.[0];
