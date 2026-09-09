@@ -163,6 +163,43 @@ If any of these doesn't behave, screenshot the issue or copy the error message a
 
 ---
 
+## Testing the web build
+
+Mutual also runs in a browser, from the same code. Two ways to test it.
+
+**On your own machine:**
+
+```bash
+cd "C:/Users/nuhaa/instagram Followers/instagram-tracker"
+npm run build:web
+cd dist && python -m http.server 8090 --bind 127.0.0.1
+```
+
+Then open http://localhost:8090. It must be served over http — opening `index.html` directly gives the page a
+`file://` origin, and browsers refuse those a database, so the app would start but forget every import.
+
+**The published demo:** https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/
+
+### What to check on web
+
+| Area | Expected |
+|---|---|
+| Import | Picking your ZIP parses it in-browser; counts match the phone exactly |
+| Persistence | Reload the page — your data is still there (it lives in IndexedDB, not localStorage) |
+| Desktop layout | At a window ≥ 900px wide the tabs become a **sidebar**; narrower falls back to bottom tabs |
+| Settings → Privacy | Only **Encrypt data at rest** appears. App lock, screenshot block, wipe-on-tamper, widget and reminders are correctly ABSENT — a browser cannot do them and they must never be shown doing nothing |
+| Encryption | Toggle on → reload → data still readable → toggle off. All three steps must be lossless |
+| DevTools check | Application → IndexedDB → `mutual` → `kv`. With encryption on, no username should be readable there |
+
+### Where to look when something is wrong
+
+- **Blank page on GitHub Pages** — almost always the `_expo/` directory being stripped by Jekyll. `docs/.nojekyll`
+  must exist.
+- **Icons render as boxes** — the Ionicons font 404'd. Check it is committed; an unanchored `node_modules/` in
+  `.gitignore` silently excluded it once.
+- **Assets 404 under `/try/`** — that build needs `npm run build:web:hosted`, which sets `experiments.baseUrl`. A
+  root build cannot be served from a subpath.
+
 ## Step 4 — Build a real APK with EAS
 
 Only do this once Expo Go testing passes. The APK is a real installable Android app that doesn't need Expo Go to run.
