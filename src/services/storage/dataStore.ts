@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './kv';
 import {
   Account,
   FollowerData,
@@ -138,7 +138,7 @@ export class DataStore {
   private async ensureCurrentAccountId(): Promise<string> {
     if (this.currentAccountId) return this.currentAccountId;
     await this.getAccounts(); // seeds the default account if the registry is empty
-    const stored = await AsyncStorage.getItem(KEYS.CURRENT_ACCOUNT);
+    const stored = await kv.getItem(KEYS.CURRENT_ACCOUNT);
     this.currentAccountId = stored ?? DEFAULT_ACCOUNT_ID;
     return this.currentAccountId;
   }
@@ -153,7 +153,7 @@ export class DataStore {
   /** Persisted flag: are the sensitive per-account keys encrypted at rest? */
   async getStorageEncrypted(): Promise<boolean> {
     try {
-      return (await AsyncStorage.getItem(KEYS.STORAGE_ENCRYPTED)) === 'true';
+      return (await kv.getItem(KEYS.STORAGE_ENCRYPTED)) === 'true';
     } catch {
       return false;
     }
@@ -163,7 +163,7 @@ export class DataStore {
   async setStorageEncrypted(enabled: boolean): Promise<void> {
     this.storageEncryptedFlag = enabled;
     try {
-      await AsyncStorage.setItem(
+      await kv.setItem(
         KEYS.STORAGE_ENCRYPTED,
         enabled ? 'true' : 'false',
       );
@@ -199,9 +199,9 @@ export class DataStore {
       const env = large
         ? await encryptWithKeyAsync(json, key)
         : encryptWithKey(json, key);
-      await AsyncStorage.setItem(fullKey, JSON.stringify(env));
+      await kv.setItem(fullKey, JSON.stringify(env));
     } else {
-      await AsyncStorage.setItem(fullKey, json);
+      await kv.setItem(fullKey, json);
     }
   }
 
@@ -212,7 +212,7 @@ export class DataStore {
    * turns that into their safe default (fail-closed, never returns garbage).
    */
   private async readValue<T>(fullKey: string, large = false): Promise<T | null> {
-    const raw = await AsyncStorage.getItem(fullKey);
+    const raw = await kv.getItem(fullKey);
     if (raw == null) return null;
     let parsed: unknown;
     try {
@@ -251,7 +251,7 @@ export class DataStore {
     for (const acc of accounts) {
       for (const base of SENSITIVE_BASE_KEYS) {
         const fullKey = keyFor(base, acc.id);
-        const raw = await AsyncStorage.getItem(fullKey);
+        const raw = await kv.getItem(fullKey);
         if (raw == null) continue;
         let parsed: unknown;
         try {
@@ -263,7 +263,7 @@ export class DataStore {
         const env = isLargeKey(base)
           ? await encryptWithKeyAsync(raw, key)
           : encryptWithKey(raw, key);
-        await AsyncStorage.setItem(fullKey, JSON.stringify(env));
+        await kv.setItem(fullKey, JSON.stringify(env));
       }
     }
     await this.setStorageEncrypted(true); // flag + persist LAST
@@ -288,7 +288,7 @@ export class DataStore {
     for (const acc of accounts) {
       for (const base of SENSITIVE_BASE_KEYS) {
         const fullKey = keyFor(base, acc.id);
-        const raw = await AsyncStorage.getItem(fullKey);
+        const raw = await kv.getItem(fullKey);
         if (raw == null) continue;
         let parsed: unknown;
         try {
@@ -300,7 +300,7 @@ export class DataStore {
         const plaintext = isLargeKey(base)
           ? await decryptWithKeyAsync(parsed, key)
           : decryptWithKey(parsed, key);
-        await AsyncStorage.setItem(fullKey, plaintext);
+        await kv.setItem(fullKey, plaintext);
       }
     }
     await deleteMasterKey(); // LAST — only after everything is plaintext
@@ -314,7 +314,7 @@ export class DataStore {
    */
   async getAccounts(): Promise<Account[]> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.ACCOUNTS);
+      const raw = await kv.getItem(KEYS.ACCOUNTS);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed as Account[];
@@ -326,7 +326,7 @@ export class DataStore {
       { id: DEFAULT_ACCOUNT_ID, name: 'Account 1', createdAt: Date.now() },
     ];
     try {
-      await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(seed));
+      await kv.setItem(KEYS.ACCOUNTS, JSON.stringify(seed));
     } catch (error) {
       console.error('Error seeding accounts:', error);
     }
@@ -341,7 +341,7 @@ export class DataStore {
   /** Switch the active account. Caller is responsible for re-hydrating state. */
   async setCurrentAccount(id: string): Promise<void> {
     this.currentAccountId = id;
-    await AsyncStorage.setItem(KEYS.CURRENT_ACCOUNT, id);
+    await kv.setItem(KEYS.CURRENT_ACCOUNT, id);
   }
 
   /** Create a new (empty) account and return it. Does not switch to it. */
@@ -352,7 +352,7 @@ export class DataStore {
       name: name.trim() || `Account ${accounts.length + 1}`,
       createdAt: Date.now(),
     };
-    await AsyncStorage.setItem(
+    await kv.setItem(
       KEYS.ACCOUNTS,
       JSON.stringify([...accounts, account]),
     );
@@ -365,7 +365,7 @@ export class DataStore {
     const updated = accounts.map((a) =>
       a.id === id ? { ...a, name: name.trim() || a.name } : a,
     );
-    await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(updated));
+    await kv.setItem(KEYS.ACCOUNTS, JSON.stringify(updated));
     return updated;
   }
 
@@ -382,12 +382,12 @@ export class DataStore {
       return { accounts, currentAccountId: await this.ensureCurrentAccountId() };
     }
     const remaining = accounts.filter((a) => a.id !== id);
-    await AsyncStorage.setItem(KEYS.ACCOUNTS, JSON.stringify(remaining));
+    await kv.setItem(KEYS.ACCOUNTS, JSON.stringify(remaining));
     await Promise.all([
-      AsyncStorage.removeItem(keyFor(KEYS.FOLLOWER_DATA, id)),
-      AsyncStorage.removeItem(keyFor(KEYS.WHITELIST, id)),
-      AsyncStorage.removeItem(keyFor(KEYS.HISTORY, id)),
-      AsyncStorage.removeItem(keyFor(KEYS.UNFOLLOWED, id)),
+      kv.removeItem(keyFor(KEYS.FOLLOWER_DATA, id)),
+      kv.removeItem(keyFor(KEYS.WHITELIST, id)),
+      kv.removeItem(keyFor(KEYS.HISTORY, id)),
+      kv.removeItem(keyFor(KEYS.UNFOLLOWED, id)),
     ]);
 
     let current = await this.ensureCurrentAccountId();
@@ -589,7 +589,7 @@ export class DataStore {
    */
   async clearHistory(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(await this.k(KEYS.HISTORY));
+      await kv.removeItem(await this.k(KEYS.HISTORY));
     } catch (error) {
       console.error('Error clearing history:', error);
       throw error;
@@ -665,9 +665,9 @@ export class DataStore {
    */
   async incrementImportCount(): Promise<number> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.IMPORT_COUNT);
+      const raw = await kv.getItem(KEYS.IMPORT_COUNT);
       const next = (raw ? parseInt(raw, 10) || 0 : 0) + 1;
-      await AsyncStorage.setItem(KEYS.IMPORT_COUNT, String(next));
+      await kv.setItem(KEYS.IMPORT_COUNT, String(next));
       return next;
     } catch (error) {
       console.error('Error incrementing import count:', error);
@@ -681,7 +681,7 @@ export class DataStore {
    */
   async getRecentSearches(): Promise<string[]> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.RECENT_SEARCHES);
+      const raw = await kv.getItem(KEYS.RECENT_SEARCHES);
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
@@ -700,7 +700,7 @@ export class DataStore {
         (t) => t.toLowerCase() !== trimmed.toLowerCase(),
       );
       const updated = [trimmed, ...deduped].slice(0, MAX_RECENT_SEARCHES);
-      await AsyncStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      await kv.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
       return updated;
     } catch (error) {
       console.error('Error adding recent search:', error);
@@ -710,7 +710,7 @@ export class DataStore {
 
   async clearRecentSearches(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(KEYS.RECENT_SEARCHES);
+      await kv.removeItem(KEYS.RECENT_SEARCHES);
     } catch (error) {
       console.error('Error clearing recent searches:', error);
     }
@@ -721,7 +721,7 @@ export class DataStore {
    */
   async getBlockScreenshots(): Promise<boolean> {
     try {
-      return (await AsyncStorage.getItem(KEYS.BLOCK_SCREENSHOTS)) === 'true';
+      return (await kv.getItem(KEYS.BLOCK_SCREENSHOTS)) === 'true';
     } catch {
       return false;
     }
@@ -729,7 +729,7 @@ export class DataStore {
 
   async setBlockScreenshots(enabled: boolean): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.BLOCK_SCREENSHOTS, enabled ? 'true' : 'false');
+      await kv.setItem(KEYS.BLOCK_SCREENSHOTS, enabled ? 'true' : 'false');
     } catch (error) {
       console.error('Error saving screenshot preference:', error);
     }
@@ -740,7 +740,7 @@ export class DataStore {
    */
   async getAppLock(): Promise<boolean> {
     try {
-      return (await AsyncStorage.getItem(KEYS.APP_LOCK)) === 'true';
+      return (await kv.getItem(KEYS.APP_LOCK)) === 'true';
     } catch {
       return false;
     }
@@ -752,7 +752,7 @@ export class DataStore {
    */
   async getWidgetEnabled(): Promise<boolean> {
     try {
-      return (await AsyncStorage.getItem(KEYS.WIDGET_ENABLED)) === 'true';
+      return (await kv.getItem(KEYS.WIDGET_ENABLED)) === 'true';
     } catch {
       return false;
     }
@@ -760,20 +760,20 @@ export class DataStore {
 
   async setWidgetEnabled(enabled: boolean): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.WIDGET_ENABLED, enabled ? 'true' : 'false');
+      await kv.setItem(KEYS.WIDGET_ENABLED, enabled ? 'true' : 'false');
     } catch (error) {
       console.error('Error saving widget preference:', error);
     }
   }
 
   /**
-   * Aggregate-only widget payload (C10). Read/written with RAW AsyncStorage —
-   * never through readValue/writeValue — so the widget's headless task can read
-   * it without the at-rest master key. Aggregates only; never usernames.
+   * Aggregate-only widget payload (C10). Read/written straight through the kv
+   * facade — never through readValue/writeValue — so the widget's headless task
+   * can read it without the at-rest master key. Aggregates only; never usernames.
    */
   async getWidgetSummary(): Promise<WidgetSummary | null> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.WIDGET_SUMMARY);
+      const raw = await kv.getItem(KEYS.WIDGET_SUMMARY);
       return raw ? (JSON.parse(raw) as WidgetSummary) : null;
     } catch {
       return null;
@@ -782,7 +782,7 @@ export class DataStore {
 
   async saveWidgetSummary(summary: WidgetSummary): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.WIDGET_SUMMARY, JSON.stringify(summary));
+      await kv.setItem(KEYS.WIDGET_SUMMARY, JSON.stringify(summary));
     } catch (error) {
       console.error('Error saving widget summary:', error);
     }
@@ -790,7 +790,7 @@ export class DataStore {
 
   async clearWidgetSummary(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(KEYS.WIDGET_SUMMARY);
+      await kv.removeItem(KEYS.WIDGET_SUMMARY);
     } catch (error) {
       console.error('Error clearing widget summary:', error);
     }
@@ -798,7 +798,7 @@ export class DataStore {
 
   async setAppLock(enabled: boolean): Promise<void> {
     try {
-      await AsyncStorage.setItem(KEYS.APP_LOCK, enabled ? 'true' : 'false');
+      await kv.setItem(KEYS.APP_LOCK, enabled ? 'true' : 'false');
     } catch (error) {
       console.error('Error saving app-lock preference:', error);
     }
@@ -810,7 +810,7 @@ export class DataStore {
    */
   async getWipeOnTamper(): Promise<boolean> {
     try {
-      return (await AsyncStorage.getItem(KEYS.WIPE_ON_TAMPER)) === 'true';
+      return (await kv.getItem(KEYS.WIPE_ON_TAMPER)) === 'true';
     } catch {
       return false;
     }
@@ -818,7 +818,7 @@ export class DataStore {
 
   async setWipeOnTamper(enabled: boolean): Promise<void> {
     try {
-      await AsyncStorage.setItem(
+      await kv.setItem(
         KEYS.WIPE_ON_TAMPER,
         enabled ? 'true' : 'false',
       );
@@ -830,7 +830,7 @@ export class DataStore {
   /** Failed-unlock count before a wipe fires (clamped). D5. */
   async getWipeThreshold(): Promise<number> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.WIPE_THRESHOLD);
+      const raw = await kv.getItem(KEYS.WIPE_THRESHOLD);
       const n = raw ? parseInt(raw, 10) : NaN;
       if (Number.isFinite(n)) {
         return Math.min(MAX_WIPE_THRESHOLD, Math.max(MIN_WIPE_THRESHOLD, n));
@@ -847,7 +847,7 @@ export class DataStore {
         MAX_WIPE_THRESHOLD,
         Math.max(MIN_WIPE_THRESHOLD, Math.round(n)),
       );
-      await AsyncStorage.setItem(KEYS.WIPE_THRESHOLD, String(clamped));
+      await kv.setItem(KEYS.WIPE_THRESHOLD, String(clamped));
     } catch (error) {
       console.error('Error saving wipe threshold:', error);
     }
@@ -860,7 +860,7 @@ export class DataStore {
    */
   async getFailedUnlocks(): Promise<number> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.FAILED_UNLOCKS);
+      const raw = await kv.getItem(KEYS.FAILED_UNLOCKS);
       const n = raw ? parseInt(raw, 10) : 0;
       return Number.isFinite(n) && n > 0 ? n : 0;
     } catch {
@@ -871,7 +871,7 @@ export class DataStore {
   async incrementFailedUnlocks(): Promise<number> {
     try {
       const next = (await this.getFailedUnlocks()) + 1;
-      await AsyncStorage.setItem(KEYS.FAILED_UNLOCKS, String(next));
+      await kv.setItem(KEYS.FAILED_UNLOCKS, String(next));
       return next;
     } catch (error) {
       console.error('Error incrementing failed unlocks:', error);
@@ -881,7 +881,7 @@ export class DataStore {
 
   async resetFailedUnlocks(): Promise<void> {
     try {
-      await AsyncStorage.removeItem(KEYS.FAILED_UNLOCKS);
+      await kv.removeItem(KEYS.FAILED_UNLOCKS);
     } catch (error) {
       console.error('Error resetting failed unlocks:', error);
     }
@@ -892,7 +892,7 @@ export class DataStore {
   /** Reminder frequency in days (global). 0 = off. Validated against presets. */
   async getNotificationFrequency(): Promise<number> {
     try {
-      const raw = await AsyncStorage.getItem(KEYS.NOTIFICATION_FREQUENCY);
+      const raw = await kv.getItem(KEYS.NOTIFICATION_FREQUENCY);
       const n = raw ? parseInt(raw, 10) : NaN;
       if (Number.isFinite(n) && ALLOWED_NOTIFICATION_FREQUENCIES.includes(n)) {
         return n;
@@ -908,7 +908,7 @@ export class DataStore {
       const n = ALLOWED_NOTIFICATION_FREQUENCIES.includes(days)
         ? days
         : DEFAULT_NOTIFICATION_FREQUENCY;
-      await AsyncStorage.setItem(KEYS.NOTIFICATION_FREQUENCY, String(n));
+      await kv.setItem(KEYS.NOTIFICATION_FREQUENCY, String(n));
     } catch (error) {
       console.error('Error saving notification frequency:', error);
     }
@@ -922,9 +922,9 @@ export class DataStore {
    */
   async wipeEverything(): Promise<void> {
     try {
-      const keys = await AsyncStorage.getAllKeys();
+      const keys = await kv.getAllKeys();
       const ours = keys.filter((k) => k.startsWith(STORAGE_PREFIX));
-      await Promise.all(ours.map((k) => AsyncStorage.removeItem(k)));
+      await Promise.all(ours.map((k) => kv.removeItem(k)));
       // D2: also delete the at-rest master key from secure-store + clear caches.
       await deleteMasterKey();
       clearCachedMasterKey();
@@ -943,12 +943,12 @@ export class DataStore {
   async clearAll(): Promise<void> {
     try {
       await Promise.all([
-        AsyncStorage.removeItem(await this.k(KEYS.FOLLOWER_DATA)),
-        AsyncStorage.removeItem(await this.k(KEYS.WHITELIST)),
-        AsyncStorage.removeItem(await this.k(KEYS.HISTORY)),
-        AsyncStorage.removeItem(await this.k(KEYS.UNFOLLOWED)),
+        kv.removeItem(await this.k(KEYS.FOLLOWER_DATA)),
+        kv.removeItem(await this.k(KEYS.WHITELIST)),
+        kv.removeItem(await this.k(KEYS.HISTORY)),
+        kv.removeItem(await this.k(KEYS.UNFOLLOWED)),
         // C10: never leave the widget showing counts for data that no longer exists.
-        AsyncStorage.removeItem(KEYS.WIDGET_SUMMARY),
+        kv.removeItem(KEYS.WIDGET_SUMMARY),
       ]);
     } catch (error) {
       console.error('Error clearing data:', error);
@@ -961,7 +961,7 @@ export class DataStore {
    */
   async hasData(): Promise<boolean> {
     try {
-      const data = await AsyncStorage.getItem(await this.k(KEYS.FOLLOWER_DATA));
+      const data = await kv.getItem(await this.k(KEYS.FOLLOWER_DATA));
       return data !== null;
     } catch (error) {
       return false;

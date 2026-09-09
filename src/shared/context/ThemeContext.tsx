@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from '../../services/storage/kv';
 import { ColorSet, DarkColors, LightColors } from '../constants/theme';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -26,7 +26,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>('system');
 
   useEffect(() => {
-    AsyncStorage.getItem(THEME_KEY).then((val) => {
+    kv.getItem(THEME_KEY).then((val) => {
       if (val === 'light' || val === 'dark' || val === 'system') {
         setModeState(val);
       }
@@ -35,7 +35,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = (newMode: ThemeMode) => {
     setModeState(newMode);
-    AsyncStorage.setItem(THEME_KEY, newMode).catch(() => {});
+    kv.setItem(THEME_KEY, newMode).catch(() => {});
   };
 
   const isDark =

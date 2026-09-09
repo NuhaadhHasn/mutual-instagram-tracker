@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { kv } from './src/services/storage/kv';
 import { View, AppState } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -27,6 +27,7 @@ import { useAppStore } from './src/shared/store/appStore';
 import { dataStore } from './src/services/storage/dataStore';
 import LockScreen from './src/features/lock/LockScreen';
 import ErrorBoundary from './src/shared/components/ErrorBoundary';
+import { canLockApp } from './src/shared/utils/platformCapabilities';
 
 const ONBOARDING_KEY = '@instagram_tracker:onboarding_done';
 // Re-lock when the app returns to the foreground after being away this long.
@@ -59,10 +60,14 @@ function RootGate() {
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
-    Promise.all([AsyncStorage.getItem(ONBOARDING_KEY), dataStore.getAppLock()])
+    Promise.all([kv.getItem(ONBOARDING_KEY), dataStore.getAppLock()])
       .then(([val, appLock]) => {
         setOnboardingDone(val === 'true');
-        if (appLock) setLocked(true);
+        // `canLockApp` guards against a permanent lockout: web has no biometric
+        // or passcode prompt to unlock WITH, so honouring a stored lock flag
+        // there (e.g. carried in from a restored Android backup) would leave the
+        // app stuck on a lock screen that can never be satisfied.
+        if (appLock && canLockApp) setLocked(true);
       })
       .catch(() => setOnboardingDone(false))
       .finally(() => {
@@ -107,7 +112,7 @@ function RootGate() {
     return (
       <OnboardingScreen
         onDone={async () => {
-          await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
+          await kv.setItem(ONBOARDING_KEY, 'true');
           setOnboardingDone(true);
         }}
       />
