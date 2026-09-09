@@ -12,7 +12,8 @@
     "test": "jest",
     "gen-widget-preview": "node scripts/gen-widget-preview.js",
     "build:web": "node scripts/build-web.js",
-    "build:web:hosted": "node scripts/build-web.js --hosted"
+    "build:web:hosted": "node scripts/build-web.js --hosted",
+    "qa:web": "node --experimental-websocket scripts/webqa.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.12",

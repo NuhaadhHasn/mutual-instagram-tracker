@@ -191,6 +191,19 @@ Then open http://localhost:8090. It must be served over http — opening `index.
 | Encryption | Toggle on → reload → data still readable → toggle off. All three steps must be lossless |
 | DevTools check | Application → IndexedDB → `mutual` → `kv`. With encryption on, no username should be readable there |
 
+### Or just run the automated pass
+
+```bash
+npm run qa:web -- https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/ "C:/path/to/your-export.zip"
+```
+
+Drives your installed Chrome over the DevTools Protocol and runs 21 checks: load, onboarding, a real file-chooser
+import of an actual export, derived-count consistency, **that nothing is uploaded and no off-origin request is
+made**, reload persistence, IndexedDB-not-localStorage, both layouts, the capability gating, and the full
+encryption round trip. Throwaway browser profile, deleted afterwards. Exits non-zero on any failure.
+
+Last run: **21/21 against the live site**, 2026-09-09.
+
 ### Where to look when something is wrong
 
 - **Blank page on GitHub Pages** — almost always the `_expo/` directory being stripped by Jekyll. `docs/.nojekyll`
