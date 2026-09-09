@@ -95,7 +95,9 @@
 
   <section>
     <h2>Network usage</h2>
-    <p>Mutual does not make any network requests. The only network behaviour is when you deliberately tap a username, which opens that account's public Instagram profile in your browser or the Instagram app. That is a normal <code>Linking.openURL</code> call — Mutual does not communicate with Instagram itself.</p>
+    <p>The Android app makes no network requests at all — the <code>INTERNET</code> permission is stripped from its manifest, so it is not merely written to avoid the network but structurally unable to reach it. The only network behaviour is when you deliberately tap a username, which opens that account's public Instagram profile in your browser or the Instagram app. That is a normal <code>Linking.openURL</code> call — Mutual does not communicate with Instagram itself.</p>
+    <p>The <strong>web demo</strong> hosted on this site works the same way once it is open, but loading it is itself a request: your browser downloads the app's files from GitHub Pages, and GitHub records that request (including your IP address) in its own server logs, exactly as it would for any website. We do not receive, see, or store those logs, and there is no analytics or tracking script on the page.</p>
+    <p>After the page has loaded, the web demo behaves like the app: your Instagram export is opened, parsed and saved inside your own browser, and nothing about it is ever uploaded. It continues to work with the network disconnected.</p>
   </section>
 
   <section>
@@ -110,6 +112,7 @@
       <li><code>@instagram_tracker:theme</code>, <code>@instagram_tracker:onboarding_done</code>, and a few small preference flags (e.g. screenshot blocking, app lock)</li>
     </ul>
     <p>If you track more than one Instagram account, each account's data is stored separately on your device under this same scheme. You can delete everything for the active account from Settings → Clear All Data, delete a whole account from Settings → Accounts, or remove all of it by uninstalling the app.</p>
+    <p>In the web demo the same keys are used, stored in your browser's own IndexedDB database (named <code>mutual</code>) instead of AsyncStorage. It is bound to that browser on that computer: another browser, another device, or a private window sees nothing. Clearing your browser's site data for this domain erases it completely, and you can also use Settings → Clear All Data as in the app.</p>
     <p>You can also export everything to a JSON file from Settings → Export app state, and restore from one later. This is for your own convenience — nothing is uploaded.</p>
   </section>
 

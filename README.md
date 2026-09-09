@@ -5,11 +5,17 @@
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Platform](https://img.shields.io/badge/platform-iOS%20%7C%20Android-lightgrey.svg)
+![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Web-lightgrey.svg)
+[![Download](https://img.shields.io/badge/download-APK-E1306C.svg)](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest)
+[![Try it](https://img.shields.io/badge/try-in%20your%20browser-405DE6.svg)](https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/)
 
-A privacy-first mobile app, built with React Native and Expo, that helps you see who follows you back on Instagram. Mutual reads your Instagram data export on your device — no login, no servers, no tracking.
+A privacy-first app, built with React Native and Expo, that helps you see who follows you back on Instagram. Mutual reads your Instagram data export on your own device — no login, no accounts, no tracking.
+
+**[Download the Android app](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest)** · **[Try it in your browser](https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/)** · **[Privacy policy](https://nuhaadhhasn.github.io/mutual-instagram-tracker/privacy-policy.html)**
 
 ## Screenshots
+
+### Android
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="30%" alt="Dashboard — stat grid + account health" />
@@ -22,6 +28,21 @@ A privacy-first mobile app, built with React Native and Expo, that helps you see
 </p>
 
 > Usernames in the Followers list are **redacted here for privacy** — the app shows real handles normally on your device. All other screens show aggregate numbers only.
+
+### Web
+
+The same app running in a browser — same parser, same data model, same screens.
+
+<p align="center">
+  <img src="docs/screenshots/web/web-dashboard.png" width="49%" alt="Web — dashboard stat grid" />
+  <img src="docs/screenshots/web/web-unfollowers.png" width="49%" alt="Web — unfollowers list" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/web/web-analytics.png" width="49%" alt="Web — analytics" />
+  <img src="docs/screenshots/web/web-settings.png" width="49%" alt="Web — settings, with the device-only toggles hidden" />
+</p>
+
+> The handles in the web screenshots are **generated sample data**, not a real account.
 
 ## Features
 
@@ -51,38 +72,76 @@ A privacy-first mobile app, built with React Native and Expo, that helps you see
 
 ## Install
 
-### Android
+Three ways to run Mutual, in order of completeness.
 
-Download the latest APK from [Releases](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases) (after the first EAS build), or build your own:
+### Android (the full app)
+
+Download the APK from the [latest release](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest) and open it on your phone. Android will ask you to allow installing from this source, which is normal for an app distributed outside the Play Store. Requires Android 7.0+.
+
+The release notes carry a SHA-256 so you can verify the download. This build has the `INTERNET` permission stripped from its manifest — it cannot reach the network even if it wanted to.
+
+### In your browser (no install)
+
+**[nuhaadhhasn.github.io/mutual-instagram-tracker/try](https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/)**
+
+The real app, running in your browser. Your ZIP is parsed and stored locally and never uploaded. Loading the page downloads the app from GitHub; after that it works offline, and your browser's install button ("Install this site as an app") gives it its own window.
+
+### On your own machine, nothing hosted
+
+Download `Mutual-1.0.0-web-local.zip` from the [latest release](https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest), unzip, and double-click `run-mutual.cmd` (Windows) or run `./run-mutual.sh` (macOS/Linux). It serves the app at `http://localhost:8321` and opens your browser. Needs Node.js or Python — most machines have one.
+
+Opening `index.html` directly does not work, and that is deliberate: browsers refuse to give `file://` pages a database, so the app could start but never remember your import.
+
+### Build it yourself
 
 ```bash
 git clone https://github.com/NuhaadhHasn/mutual-instagram-tracker.git
 cd mutual-instagram-tracker
 npm install
-eas login
-eas build --platform android --profile preview
+
+npm run build:web          # → dist/, serve on localhost
+eas build --platform android --profile preview   # Android APK (needs `eas login`)
 ```
 
 ### iOS
 
-The fastest way to try Mutual on iPhone without paying for an Apple Developer account is via **Expo Go**:
+No iOS build is published. The fastest way to try Mutual on an iPhone is [Expo Go](https://apps.apple.com/app/expo-go/id982107779): run `npx expo start -c` and scan the QR code. A standalone iOS build needs an Apple Developer account ($99/year).
 
-1. Install [Expo Go](https://apps.apple.com/app/expo-go/id982107779) from the App Store
-2. Run `npx expo start -c` from the project directory
-3. Scan the QR code with your iPhone camera
+## What differs on web
 
-For a standalone iOS build, an Apple Developer account ($99/year) is required.
+The browser versions are the same app — same parser, same data model, same screens — minus four things a browser genuinely cannot do. They are **hidden rather than shown doing nothing**, because a privacy control that lies is worse than one that is plainly absent.
+
+| Feature | Android | Web | Why |
+|---|:--:|:--:|---|
+| Import, all screens, analytics, history, CSV export | ✅ | ✅ | |
+| Multiple accounts, whitelist, backup & restore | ✅ | ✅ | |
+| App lock (biometric / passcode) | ✅ | — | No biometric prompt in a browser |
+| Encryption at rest | ✅ | — | No OS keystore to hold the key (Web Crypto version planned) |
+| Screenshot blocking | ✅ | — | No web API exists; a page cannot refuse capture |
+| Home-screen widget | ✅ | — | A browser has no home screen |
+| Import reminders | ✅ | — | Chrome dropped scheduled notifications; the rest need a push server |
+
+Storage differs underneath too: Android uses AsyncStorage, web uses IndexedDB. Key names are identical, so a backup JSON moves between them unchanged.
 
 ## Development
 
 ```bash
 cd "instagram-tracker"
 npm install
-npx expo start -c       # clear cache + start Metro
-npx tsc --noEmit        # type-check
-npm test                # unit tests (jest)
-npm run gen-icons       # regenerate icon PNGs from assets/icon.svg
+npx expo start -c        # clear cache + start Metro
+npx tsc --noEmit         # type-check (keep at 0)
+npm test                 # unit tests (jest)
+npx expo-doctor          # dependency / config validation (keep at 20/20)
+
+npm run build:web        # web build → dist/ (serve on localhost)
+npm run build:web:hosted # web build → docs/try/ (GitHub Pages subpath)
+npm run gen-icons        # regenerate icon PNGs from assets/icon.svg
 ```
+
+`build:web:hosted` exists because `expo export` bakes absolute asset paths into the
+bundle, which 404 under a Pages subpath. It sets `experiments.baseUrl` for the duration
+of that one build and restores `app.json` afterwards, so the local build stays
+root-relative.
 
 ### Project layout
 
@@ -105,8 +164,14 @@ instagram-tracker/
     │   ├── onboarding/
     │   └── widget/                # Android home-screen widget UI
     ├── services/
-    │   ├── parsers/instagramParser.ts    # ZIP parsing
-    │   └── storage/dataStore.ts          # AsyncStorage wrapper + migration
+    │   ├── parsers/
+    │   │   ├── instagramParser.ts        # ZIP parsing
+    │   │   ├── pickZip.ts                # native: pick file → base64
+    │   │   └── pickZip.web.ts            # web: pick file → Blob straight to JSZip
+    │   └── storage/
+    │       ├── dataStore.ts              # storage wrapper + migration
+    │       ├── kv.ts                     # native storage → AsyncStorage
+    │       └── kv.web.ts                 # web storage → IndexedDB (idb-keyval)
     └── shared/
         ├── components/                    # SkeletonBox, AnimatedFadeSlide, FreshnessBanner, UserAvatar
         ├── context/                       # ThemeContext, DialogContext
@@ -120,9 +185,10 @@ instagram-tracker/
 ### Tech stack
 
 - React Native 0.83 + Expo SDK 55 (Expo Go compatible)
+- `react-native-web` for the browser build — one codebase, `.web.ts` splits where platforms genuinely differ
 - TypeScript 6 (strict)
 - Zustand for global state
-- AsyncStorage for local persistence
+- AsyncStorage (native) / IndexedDB via `idb-keyval` (web) behind a shared four-method storage facade
 - React Navigation v7 (root stack + bottom tabs)
 - `react-native-gifted-charts` for charts
 - `react-native-reanimated` for screen entrance animations
@@ -133,8 +199,9 @@ instagram-tracker/
 
 ## Privacy & security
 
-- All data stays on your device. No servers, no cloud, no telemetry.
-- Mutual makes **zero** network requests. (`Linking.openURL` to open a profile in your browser is the only outbound action, and only when you tap.)
+- All data stays on your device. No servers, no cloud, no telemetry, no accounts.
+- The Android app makes **zero** network requests — the `INTERNET` permission is stripped from its manifest, so it cannot reach the network at all. (`Linking.openURL` to open a profile is the only outbound action, and only when you tap.)
+- The **hosted web demo** is one honest exception: loading the page downloads the app from GitHub Pages, and GitHub logs that request like any website would. Once loaded it behaves identically — your export is parsed and stored in your own browser, nothing is uploaded, and it keeps working offline. Run the local build instead if you'd rather not touch a server at all.
 - The app never asks for your Instagram password.
 - See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md).
 

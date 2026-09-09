@@ -15,7 +15,7 @@
     font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     display:flex; align-items:center; justify-content:center; padding:24px;
   }
-  .card { max-width:620px; width:100%; text-align:center; }
+  .card { max-width:660px; width:100%; text-align:center; }
   .banner { width:100%; border-radius:16px; display:block; margin-bottom:28px; }
   h1 { font-size:1.6rem; margin:0 0 8px; letter-spacing:-0.5px; }
   p.tag { color:var(--muted); margin:0 0 28px; font-size:1.05rem; }
@@ -26,6 +26,15 @@
   }
   a.primary { background:var(--brand); color:#fff; border-color:var(--brand); }
   a.secondary { color:var(--text); background:var(--card); }
+  .sub { color:var(--muted); font-size:0.82rem; margin:10px 0 0; }
+  .note {
+    text-align:left; background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:16px 18px; margin-top:28px;
+  }
+  .note h2 { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--muted); margin:0 0 8px; }
+  .note p { margin:0 0 10px; font-size:0.9rem; line-height:1.55; }
+  .note p:last-child { margin-bottom:0; }
   footer { color:var(--muted); font-size:0.85rem; margin-top:32px; }
 </style>
 </head>
@@ -33,11 +42,25 @@
   <div class="card">
     <img class="banner" src="./store/feature-graphic.png" alt="Mutual — see who's really with you">
     <h1>Mutual</h1>
-    <p class="tag">Find who doesn't follow you back on Instagram. 100% private — runs entirely on your device. No login, no servers, no tracking.</p>
+    <p class="tag">Find who doesn't follow you back on Instagram. No login, no accounts, no tracking — your Instagram export is read on your own device and never uploaded.</p>
+
     <div class="links">
-      <a class="btn primary" href="./privacy-policy.html">Privacy Policy</a>
+      <a class="btn primary" href="https://github.com/NuhaadhHasn/mutual-instagram-tracker/releases/latest">Download for Android</a>
+      <a class="btn secondary" href="./try/">Try the web demo</a>
+    </div>
+    <p class="sub">Android APK · 86&nbsp;MB · or run it in your browser, nothing to install</p>
+
+    <div class="note">
+      <h2>About the web demo</h2>
+      <p>The demo is the real app, running entirely inside your browser. Your Instagram ZIP is opened, parsed and stored locally — it is never sent anywhere, and there is no account or server behind it. Loading this page downloads the app from GitHub; after that it works offline.</p>
+      <p>A browser can't offer everything a phone can, so the demo leaves out the Android-only protections: app lock, encryption at rest, screenshot blocking and the home-screen widget. Those toggles are hidden rather than shown doing nothing. For the complete app, install the APK.</p>
+    </div>
+
+    <div class="links" style="margin-top:22px;">
+      <a class="btn secondary" href="./privacy-policy.html">Privacy Policy</a>
       <a class="btn secondary" href="https://github.com/NuhaadhHasn/mutual-instagram-tracker">View on GitHub</a>
     </div>
+
     <footer>© 2026 Mutual · Not affiliated with Instagram or Meta Platforms, Inc.</footer>
   </div>
 </body>
