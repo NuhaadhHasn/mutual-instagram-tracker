@@ -1,6 +1,17 @@
 import * as Crypto from 'expo-crypto';
 import CryptoJS from 'crypto-js';
 
+import { AT_REST_FORMAT, AtRestDecryptError, AtRestEnvelope } from './atRestTypes';
+
+// Re-exported so callers can import the whole at-rest surface from one module
+// regardless of which platform implementation Metro resolved.
+export {
+  AT_REST_FORMAT,
+  AtRestDecryptError,
+  isAtRestEnvelope,
+} from './atRestTypes';
+export type { AtRestEnvelope } from './atRestTypes';
+
 /**
  * Raw-key AES-256 encryption for data AT REST on this device (D2).
  *
@@ -20,25 +31,6 @@ import CryptoJS from 'crypto-js';
  * JSON.parse). Adequate for personal at-rest data; a future format:2 could add
  * encrypt-then-HMAC.
  */
-
-export const AT_REST_FORMAT = 1;
-
-export interface AtRestEnvelope {
-  v: 'mtl-ar'; // marker, distinct from the backup envelope's { app: 'mutual' }
-  enc: true;
-  format: number; // AT_REST_FORMAT
-  cipher: 'AES-256-CBC';
-  iv: string; // base64, 16 bytes, fresh per value
-  ct: string; // base64 ciphertext
-}
-
-/** Thrown when at-rest decryption fails (missing/rotated key or corruption). */
-export class AtRestDecryptError extends Error {
-  constructor() {
-    super('Could not decrypt at-rest data');
-    this.name = 'AtRestDecryptError';
-  }
-}
 
 /** Yield once so a busy indicator can paint before a large CPU-bound encrypt/decrypt. */
 function yieldToUI(): Promise<void> {
@@ -131,20 +123,4 @@ export async function decryptWithKeyAsync(
 ): Promise<string> {
   await yieldToUI();
   return decryptInternal(env, keyB64);
-}
-
-/** Type guard: is this parsed object one of our at-rest envelopes? */
-export function isAtRestEnvelope(parsed: unknown): parsed is AtRestEnvelope {
-  if (!parsed || typeof parsed !== 'object') return false;
-  const e = parsed as Record<string, unknown>;
-  return (
-    e.v === 'mtl-ar' &&
-    e.enc === true &&
-    typeof e.format === 'number' &&
-    (e.format as number) <= AT_REST_FORMAT &&
-    typeof e.iv === 'string' &&
-    (e.iv as string).length > 0 &&
-    typeof e.ct === 'string' &&
-    (e.ct as string).length > 0
-  );
 }

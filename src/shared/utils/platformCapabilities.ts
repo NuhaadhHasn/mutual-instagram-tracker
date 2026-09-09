@@ -25,12 +25,19 @@ export const canBlockScreenshots = !isWeb;
 export const canWipeOnTamper = !isWeb;
 
 /**
- * D2 encryption at rest. `expo-secure-store`'s web module is literally
- * `export default {}`, so there is nowhere safe to keep the master key today.
- * TEMPORARY: the planned replacement is a non-extractable Web Crypto key
- * wrapped in IndexedDB, at which point this becomes true on web too.
+ * D2 encryption at rest. Available everywhere, by different means: native keeps
+ * a key in the device Keychain/Keystore, web generates a NON-EXTRACTABLE
+ * WebCrypto key and stores the handle in IndexedDB, where no script can read
+ * its bytes back out.
+ *
+ * The guarantees are NOT equivalent. On web the key lives in the same browser
+ * profile as the ciphertext, so encryption there means "not readable text in
+ * storage, and no page can steal the key" — not "safe from someone holding the
+ * machine". Android backs its key with a hardware keystore and pairs it with an
+ * app lock; web has neither. See the threat-model note at the top of
+ * `atRestCrypto.web.ts` before writing any user-facing copy about this.
  */
-export const canEncryptAtRest = !isWeb;
+export const canEncryptAtRest = true;
 
 /** C10 home-screen widget. Android-only feature; a browser has no home screen. */
 export const canUseWidget = !isWeb;
@@ -51,6 +58,5 @@ export const hasDeviceProtections =
   canLockApp &&
   canBlockScreenshots &&
   canWipeOnTamper &&
-  canEncryptAtRest &&
   canUseWidget &&
   canScheduleReminders;

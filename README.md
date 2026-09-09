@@ -124,12 +124,16 @@ The browser versions are the same app — same parser, same data model, same scr
 | Import, all screens, analytics, history, CSV export | ✅ | ✅ | |
 | Multiple accounts, whitelist, backup & restore | ✅ | ✅ | |
 | App lock (biometric / passcode) | ✅ | — | No biometric prompt in a browser |
-| Encryption at rest | ✅ | — | No OS keystore to hold the key (Web Crypto version planned) |
+| Encryption at rest | ✅ | ✅ | Different mechanisms — see below |
 | Screenshot blocking | ✅ | — | No web API exists; a page cannot refuse capture |
 | Home-screen widget | ✅ | — | A browser has no home screen |
 | Import reminders | ✅ | — | Chrome dropped scheduled notifications; the rest need a push server |
 
 Storage differs underneath too: Android uses AsyncStorage, web uses IndexedDB. Key names are identical, so a backup JSON moves between them unchanged.
+
+**Encryption at rest** works on both, by different means. Android holds a random key in the device Keychain/Keystore and encrypts with AES-256-CBC. The browser has no keystore, so web generates a **non-extractable** AES-256-**GCM** key: it can encrypt and decrypt, but no script — including one injected into the page — can read the key material back out. GCM is authenticated, so on web a single altered byte is rejected outright rather than surfacing as corrupt output.
+
+The guarantees are honestly not identical, and it is worth being precise about what the web version buys you. Your data stops being readable text in browser storage, and no page can read the key out — so a script that got into the origin cannot steal the key itself. But the key is kept in the same browser profile as the data, so this is **not** protection against someone who has your computer, or a copy of that profile. Android's key sits in a hardware-backed keystore and is paired with an app lock; web has neither. The in-app dialog says exactly this before you turn it on.
 
 Web also gains something the phone has no room for: at 900px and wider the bottom tab bar becomes a **sidebar** and the dashboard grid goes three across. The breakpoint is web-only by design — an Android tablet keeps the phone layout it was built and device-tested for.
 

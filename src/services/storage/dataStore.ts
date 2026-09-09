@@ -7,13 +7,8 @@ import {
   WhitelistUser,
   WidgetSummary,
 } from '../../shared/types';
-import {
-  decryptWithKey,
-  decryptWithKeyAsync,
-  encryptWithKey,
-  encryptWithKeyAsync,
-  isAtRestEnvelope,
-} from './atRestCrypto';
+import { decryptWithKeyAsync, encryptWithKeyAsync } from './atRestCrypto';
+import { isAtRestEnvelope } from './atRestTypes';
 import {
   clearCachedMasterKey,
   createAndStoreMasterKey,
@@ -87,15 +82,6 @@ const SENSITIVE_BASE_KEYS = [
   KEYS.HISTORY,
   KEYS.UNFOLLOWED,
 ];
-
-// follower_data and history are the large blobs (can be several MB) — use the
-// async, yield-first crypto variants for them so a busy overlay can paint first
-// and hydration never blocks the JS thread.
-// NOTE: history was previously excluded here, which meant a 50-snapshot history
-// carrying C5 username sets took the SYNCHRONOUS decrypt path and blocked the
-// main thread for ~1s+ at every launch. Keep both keys listed.
-const isLargeKey = (base: string): boolean =>
-  base === KEYS.FOLLOWER_DATA || base === KEYS.HISTORY;
 
 // How many of the most recent snapshots keep their C5 username sets.
 // HistoryScreen only ever diffs the two most recent snapshots
@@ -188,17 +174,11 @@ export class DataStore {
    * route through here. When encryption is on and the key is cached, the stored
    * form is JSON.stringify(envelope); otherwise plain JSON (back-compat).
    */
-  private async writeValue(
-    fullKey: string,
-    obj: unknown,
-    large = false,
-  ): Promise<void> {
+  private async writeValue(fullKey: string, obj: unknown): Promise<void> {
     const json = JSON.stringify(obj);
     const key = this.storageEncryptedFlag ? getCachedMasterKey() : null;
     if (key) {
-      const env = large
-        ? await encryptWithKeyAsync(json, key)
-        : encryptWithKey(json, key);
+      const env = await encryptWithKeyAsync(json, key);
       await kv.setItem(fullKey, JSON.stringify(env));
     } else {
       await kv.setItem(fullKey, json);
@@ -211,7 +191,7 @@ export class DataStore {
    * Throws if an envelope is present but no key is cached — callers' try/catch
    * turns that into their safe default (fail-closed, never returns garbage).
    */
-  private async readValue<T>(fullKey: string, large = false): Promise<T | null> {
+  private async readValue<T>(fullKey: string): Promise<T | null> {
     const raw = await kv.getItem(fullKey);
     if (raw == null) return null;
     let parsed: unknown;
@@ -225,9 +205,7 @@ export class DataStore {
       if (!key) {
         throw new Error('Encrypted data present but master key unavailable');
       }
-      const json = large
-        ? await decryptWithKeyAsync(parsed, key)
-        : decryptWithKey(parsed, key);
+      const json = await decryptWithKeyAsync(parsed, key);
       return JSON.parse(json) as T;
     }
     return parsed as T;
@@ -260,9 +238,7 @@ export class DataStore {
           continue;
         }
         if (isAtRestEnvelope(parsed)) continue; // already encrypted
-        const env = isLargeKey(base)
-          ? await encryptWithKeyAsync(raw, key)
-          : encryptWithKey(raw, key);
+        const env = await encryptWithKeyAsync(raw, key);
         await kv.setItem(fullKey, JSON.stringify(env));
       }
     }
@@ -297,9 +273,7 @@ export class DataStore {
           continue;
         }
         if (!isAtRestEnvelope(parsed)) continue; // already plaintext
-        const plaintext = isLargeKey(base)
-          ? await decryptWithKeyAsync(parsed, key)
-          : decryptWithKey(parsed, key);
+        const plaintext = await decryptWithKeyAsync(parsed, key);
         await kv.setItem(fullKey, plaintext);
       }
     }
@@ -405,7 +379,7 @@ export class DataStore {
    */
   async saveFollowerData(data: FollowerData): Promise<void> {
     try {
-      await this.writeValue(await this.k(KEYS.FOLLOWER_DATA), data, true);
+      await this.writeValue(await this.k(KEYS.FOLLOWER_DATA), data);
     } catch (error) {
       console.error('Error saving follower data:', error);
       throw error;
@@ -420,11 +394,11 @@ export class DataStore {
   async getFollowerData(): Promise<FollowerData | null> {
     try {
       const key = await this.k(KEYS.FOLLOWER_DATA);
-      const parsed = await this.readValue<FollowerData>(key, true);
+      const parsed = await this.readValue<FollowerData>(key);
       if (!parsed) return null;
       const migrated = migrateFollowerData(parsed);
       if (migrated !== parsed) {
-        await this.writeValue(key, migrated, true);
+        await this.writeValue(key, migrated);
       }
       return migrated;
     } catch (error) {
@@ -556,10 +530,9 @@ export class DataStore {
       const history = await this.getHistory();
       history.push(snapshot);
       // Cap at 50 snapshots, then drop the C5 username sets from all but the
-      // newest few (see pruneSnapshotUsernames). `large: true` keeps the
-      // encrypt off the main thread.
+      // newest few (see pruneSnapshotUsernames).
       const trimmed = pruneSnapshotUsernames(history.slice(-50));
-      await this.writeValue(await this.k(KEYS.HISTORY), trimmed, true);
+      await this.writeValue(await this.k(KEYS.HISTORY), trimmed);
     } catch (error) {
       console.error('Error saving snapshot:', error);
       throw error;
@@ -571,11 +544,8 @@ export class DataStore {
    */
   async getHistory(): Promise<HistoricalSnapshot[]> {
     try {
-      // `large: true` — history can be megabytes; the sync decrypt path blocked
-      // the JS thread for ~1s+ at hydration.
       const data = await this.readValue<HistoricalSnapshot[]>(
         await this.k(KEYS.HISTORY),
-        true,
       );
       return data ?? [];
     } catch (error) {

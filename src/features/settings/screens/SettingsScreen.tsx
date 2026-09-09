@@ -53,7 +53,11 @@ import {
   Spacing,
 } from '../../../shared/constants/theme';
 import { useTheme, ThemeMode } from '../../../shared/context/ThemeContext';
-import { hasDeviceProtections } from '../../../shared/utils/platformCapabilities';
+import {
+  canEncryptAtRest,
+  hasDeviceProtections,
+  isWeb,
+} from '../../../shared/utils/platformCapabilities';
 
 type Styles = ReturnType<typeof makeStyles>;
 
@@ -789,8 +793,15 @@ export default function SettingsScreen({ navigation }: any) {
     if (value) {
       const ok = await dialog.confirm({
         title: 'Encrypt data at rest?',
-        message:
-          'Your follower data, whitelist, history, and unfollowed list will be scrambled with a key held in this device’s secure keychain. This can take a few seconds.',
+        message: isWeb
+          ? // Be precise about what a browser can actually promise. The key is
+            // non-extractable, so no page can read it out — but it is stored in
+            // the same browser profile as the data, so this is NOT protection
+            // against someone who has your computer or a copy of that profile.
+            // Claiming otherwise would be exactly the kind of reassuring lie
+            // this app refuses to tell.
+            'Your follower data, whitelist, history, and unfollowed list stop being readable text in this browser’s storage. The key stays in this browser and no page can read it out — but it is kept in the same browser profile as the data, so this is not protection against someone who has your computer. For that, use the Android app and its app lock.'
+          : 'Your follower data, whitelist, history, and unfollowed list will be scrambled with a key held in this device’s secure keychain. This can take a few seconds.',
         confirmLabel: 'Encrypt',
         icon: 'lock-closed-outline',
       });
@@ -1466,8 +1477,10 @@ export default function SettingsScreen({ navigation }: any) {
         screen. On web they would each flip to "on" and do nothing, so the whole
         card is dropped rather than shown broken. See platformCapabilities.ts.
       */}
-      {hasDeviceProtections && (
+      {(hasDeviceProtections || canEncryptAtRest) && (
       <View style={[styles.groupCard, { marginTop: Spacing.sm }]}>
+        {hasDeviceProtections && (
+        <>
         <View style={styles.toggleRow}>
           <View style={[styles.rowIconBg, { backgroundColor: colors.secondary + '15' }]}>
             <Ionicons name="eye-off-outline" size={20} color={colors.secondary} />
@@ -1553,7 +1566,10 @@ export default function SettingsScreen({ navigation }: any) {
             </TouchableOpacity>
           </>
         )}
-        <Separator />
+        </>
+        )}
+        {hasDeviceProtections && <Separator />}
+        {canEncryptAtRest && (
         <View style={styles.toggleRow}>
           <View style={[styles.rowIconBg, { backgroundColor: colors.success + '15' }]}>
             <Ionicons name="lock-closed" size={20} color={colors.success} />
@@ -1568,7 +1584,9 @@ export default function SettingsScreen({ navigation }: any) {
             >
               {storageEncrypted
                 ? 'Encrypted at rest ✓'
-                : 'Scramble stored data with a device key'}
+                : isWeb
+                  ? 'Scramble stored data with a key this browser keeps'
+                  : 'Scramble stored data with a device key'}
             </Text>
           </View>
           <Switch
@@ -1578,6 +1596,9 @@ export default function SettingsScreen({ navigation }: any) {
             thumbColor="#fff"
           />
         </View>
+        )}
+        {hasDeviceProtections && (
+        <>
         <Separator />
         <View style={styles.toggleRow}>
           <View style={[styles.rowIconBg, { backgroundColor: colors.primary + '15' }]}>
@@ -1636,6 +1657,8 @@ export default function SettingsScreen({ navigation }: any) {
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </>
+        )}
+        </>
         )}
       </View>
       )}

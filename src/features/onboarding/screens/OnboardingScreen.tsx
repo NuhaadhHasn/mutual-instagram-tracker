@@ -23,6 +23,11 @@ import { useTheme } from '../../../shared/context/ThemeContext';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import { haptic } from '../../../shared/utils/haptics';
 
+// Onboarding copy stays inside a comfortable reading column however wide the
+// window is. Onboarding renders before the tab navigator, so it never gets the
+// desktop sidebar and has to handle wide screens itself.
+const CONTENT_MAX_WIDTH = 560;
+
 type Slide = {
   id: string;
   kind: 'logo' | 'icon';
@@ -108,7 +113,17 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   };
 
   const renderItem = ({ item, index }: { item: Slide; index: number }) => (
-    <View style={[styles.slide, { width: screenW }]} key={item.id}>
+    <View
+      style={[
+        styles.slide,
+        // The page itself must stay exactly one viewport wide for paging to
+        // land correctly; the CONTENT is what gets centred. On a wide desktop
+        // window the copy would otherwise run the full width of the screen,
+        // which reads as a stretched phone app rather than a designed one.
+        { width: screenW, paddingHorizontal: Math.max(Spacing.xl, (screenW - CONTENT_MAX_WIDTH) / 2) },
+      ]}
+      key={item.id}
+    >
       <AnimatedFadeSlide
         index={0}
         variant="scale"
