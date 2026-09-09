@@ -1,0 +1,5 @@
+# Shell scripts must keep LF endings. On a Windows clone git would otherwise
+# hand out CRLF, and a CRLF shell script fails on macOS/Linux with
+# "bad interpreter: /usr/bin/env bash^M". run-mutual.sh is shipped to users
+# inside the web-local zip, so this has to survive a clone on any platform.
+*.sh text eol=lf
