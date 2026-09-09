@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   FlatList,
   TouchableOpacity,
   Image,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,8 +22,6 @@ import {
 import { useTheme } from '../../../shared/context/ThemeContext';
 import AnimatedFadeSlide from '../../../shared/components/AnimatedFadeSlide';
 import { haptic } from '../../../shared/utils/haptics';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 type Slide = {
   id: string;
@@ -81,6 +79,12 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => makeStyles(colors), [colors]);
   const flatListRef = useRef<FlatList<Slide>>(null);
+  // Measured per render, not once at module load. On web the module is
+  // evaluated before the document has laid out, so a captured
+  // `Dimensions.get('window')` was 0 — every slide got `width: 0` and
+  // collapsed to min-content, stacking all four pages side by side. The hook
+  // also keeps paging correct when a desktop browser window is resized.
+  const { width: screenW } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const gradient = isDark ? DarkGradients.primary : Gradients.primary;
@@ -104,7 +108,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   };
 
   const renderItem = ({ item, index }: { item: Slide; index: number }) => (
-    <View style={[styles.slide, { width: SCREEN_W }]} key={item.id}>
+    <View style={[styles.slide, { width: screenW }]} key={item.id}>
       <AnimatedFadeSlide
         index={0}
         variant="scale"

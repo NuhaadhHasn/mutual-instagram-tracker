@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import * as ScreenCapture from 'expo-screen-capture';
 
 import { useAppStore } from '../store/appStore';
+import { canBlockScreenshots } from '../utils/platformCapabilities';
 
 const TAG = 'mutual-privacy';
 
@@ -23,7 +24,11 @@ export function useScreenCaptureGuard(enabled: boolean) {
   const setScreenshotGuardFailed = useAppStore((s) => s.setScreenshotGuardFailed);
 
   useEffect(() => {
-    if (!enabled) {
+    // On web there is no capture-blocking API to call, and the Settings toggle
+    // is hidden, so the preference can never legitimately be on. Bail before
+    // touching expo-screen-capture rather than letting a stray stored value
+    // produce a warning about protection that was never possible.
+    if (!enabled || !canBlockScreenshots) {
       // Not asked for → not "failed". Clear any stale warning from a previous
       // enable so the row doesn't keep warning after the user turns it off.
       setScreenshotGuardFailed(false);

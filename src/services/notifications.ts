@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
+import { canScheduleReminders } from '../shared/utils/platformCapabilities';
+
 /**
  * Local, opt-in "time to re-import your data" reminders (#10).
  *
@@ -40,8 +42,11 @@ let _mod: typeof import('expo-notifications') | null | undefined;
 
 function getNotifications(): typeof import('expo-notifications') | null {
   if (_mod !== undefined) return _mod;
-  if (isExpoGo) {
-    _mod = null; // never require in Expo Go — it would throw a fatal redbox
+  if (isExpoGo || !canScheduleReminders) {
+    // Never require in Expo Go — it would throw a fatal redbox. And never on
+    // web, where merely loading the module registers a push-token listener and
+    // logs a "not supported on web" warning for a feature we deliberately hide.
+    _mod = null;
     return _mod;
   }
   try {

@@ -53,6 +53,7 @@ import {
   Spacing,
 } from '../../../shared/constants/theme';
 import { useTheme, ThemeMode } from '../../../shared/context/ThemeContext';
+import { hasDeviceProtections } from '../../../shared/utils/platformCapabilities';
 
 type Styles = ReturnType<typeof makeStyles>;
 
@@ -1459,6 +1460,13 @@ export default function SettingsScreen({ navigation }: any) {
           </Text>
         </View>
       </View>
+      {/*
+        Every control in this card depends on something only a mobile OS has —
+        a keystore, FLAG_SECURE, a biometric prompt, an alarm scheduler, a home
+        screen. On web they would each flip to "on" and do nothing, so the whole
+        card is dropped rather than shown broken. See platformCapabilities.ts.
+      */}
+      {hasDeviceProtections && (
       <View style={[styles.groupCard, { marginTop: Spacing.sm }]}>
         <View style={styles.toggleRow}>
           <View style={[styles.rowIconBg, { backgroundColor: colors.secondary + '15' }]}>
@@ -1630,6 +1638,7 @@ export default function SettingsScreen({ navigation }: any) {
           </>
         )}
       </View>
+      )}
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handleOpenGitHub}
