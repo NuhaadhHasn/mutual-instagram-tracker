@@ -117,7 +117,7 @@ No iOS build is published. The fastest way to try Mutual on an iPhone is [Expo G
 
 ## What differs on web
 
-The browser versions are the same app — same parser, same data model, same screens — minus four things a browser genuinely cannot do. They are **hidden rather than shown doing nothing**, because a privacy control that lies is worse than one that is plainly absent.
+The browser versions are the same app — same parser, same data model, same screens — minus five things a browser genuinely cannot do. They are **hidden rather than shown doing nothing**, because a privacy control that lies is worse than one that is plainly absent.
 
 | Feature | Android | Web | Why |
 |---|:--:|:--:|---|
@@ -126,6 +126,7 @@ The browser versions are the same app — same parser, same data model, same scr
 | App lock (biometric / passcode) | ✅ | — | No biometric prompt in a browser |
 | Encryption at rest | ✅ | ✅ | Different mechanisms — see below |
 | Screenshot blocking | ✅ | — | No web API exists; a page cannot refuse capture |
+| Erase after failed unlocks | ✅ | — | Rides on the app lock, and DevTools can read the database anyway |
 | Home-screen widget | ✅ | — | A browser has no home screen |
 | Import reminders | ✅ | — | Chrome dropped scheduled notifications; the rest need a push server |
 

@@ -1,13 +1,13 @@
 # Privacy Policy for Mutual
 
 **Effective date:** 2026-07-12
-**Last updated:** 2026-07-12
+**Last updated:** 2026-09-10
 
 ---
 
 ## Summary
 
-Mutual is a privacy-first mobile app that helps you see who follows you back on Instagram. It runs entirely on your device. We do not collect, store, or transmit any personal data to any server. There is no account, no login, no analytics, and no tracking.
+Mutual is a privacy-first app — on Android, and in a web browser — that helps you see who follows you back on Instagram. It runs entirely on your own device. We do not collect, store, or transmit any personal data to any server. There is no account, no login, no analytics, and no tracking.
 
 If that's all you needed to know, you can stop reading.
 
@@ -38,11 +38,13 @@ All of this is held in your device's local storage (AsyncStorage). It never leav
 
 ## Network usage
 
-Mutual does not make any network requests. The only network behaviour is when you deliberately tap a username, which opens that account's public Instagram profile in your browser or the Instagram app. That is a normal `Linking.openURL` call — Mutual does not communicate with Instagram itself.
+The Android app makes no network requests at all — the `INTERNET` permission is stripped from its manifest, so it is not merely written to avoid the network but structurally unable to reach it. The only network behaviour is when you deliberately tap a username, which opens that account's public Instagram profile in your browser or the Instagram app. That is a normal `Linking.openURL` call — Mutual does not communicate with Instagram itself.
+
+The **web demo** works the same way once it is open, but loading it is itself a request: your browser downloads the app's files from GitHub Pages, and GitHub records that request (including your IP address) in its own server logs, exactly as it would for any website. We do not receive, see, or store those logs, and there is no analytics or tracking script on the page. After the page has loaded, your Instagram export is opened, parsed and saved inside your own browser, nothing about it is ever uploaded, and it keeps working with the network disconnected. If you would rather not load anything from a server at all, the release includes a bundle you run from your own machine.
 
 ## Data storage and deletion
 
-All app data is stored locally on your device, under these AsyncStorage keys:
+All app data is stored locally on your device — in AsyncStorage on Android, and in your browser's own IndexedDB database (named `mutual`) on the web — under these keys:
 
 - `@instagram_tracker:follower_data` — your imported follower/following data
 - `@instagram_tracker:whitelist` — accounts you've hidden from your unfollowers list
@@ -50,8 +52,14 @@ All app data is stored locally on your device, under these AsyncStorage keys:
 - `@instagram_tracker:history` — snapshots of your past imports
 - `@instagram_tracker:accounts` and `@instagram_tracker:current_account` — the Instagram accounts you track in the app and which one is active
 - `@instagram_tracker:theme`, `@instagram_tracker:onboarding_done`, and a few small preference flags (e.g. screenshot blocking, app lock)
+- `@instagram_tracker:widget_enabled` and `@instagram_tracker:widget_summary` (Android only) — whether the home-screen widget is on, and the aggregate counts it displays. The widget stores **counts only, never usernames**, because a widget stays visible while the app is locked
+- `@instagram_tracker:at_rest_master_key_v1` (web only) — the encryption key, present only if you turn on "Encrypt data at rest". It is stored as a key object your browser will not let any script read the raw bytes of, or, if you choose a passphrase, as a blob that cannot be unlocked without it
 
 If you track more than one Instagram account, each account's data is stored separately on your device under this same scheme. You can delete everything for the active account from Settings → Clear All Data, delete a whole account from Settings → Accounts, or remove all of it by uninstalling the app.
+
+On the web the same data is bound to that browser on that computer: another browser, another device, or a private window sees nothing. Clearing your browser's site data for the domain erases it completely.
+
+**Encryption at rest** is optional on both platforms and off by default. On Android the key lives in the device's hardware-backed keystore. In a browser there is no keystore, so the key is either kept in a form no script can read the bytes of — which stops the data being readable text in storage, but does not protect it from someone using your computer — or, if you choose a passphrase, wrapped with that passphrase so the stored data is useless without it. Settings states which of these you are getting before you turn it on. A lost passphrase cannot be recovered by anyone, including us.
 
 You can also export everything to a JSON file from Settings → Export app state, and restore from one later. This is for your own convenience — nothing is uploaded.
 

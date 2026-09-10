@@ -201,12 +201,12 @@ That URL is rebuilt and redeployed by CI on every push to `main`
 npm run qa:web -- https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/ "C:/path/to/your-export.zip"
 ```
 
-Drives your installed Chrome over the DevTools Protocol and runs 21 checks: load, onboarding, a real file-chooser
+Drives your installed Chrome over the DevTools Protocol and runs 22 checks: load, onboarding, a real file-chooser
 import of an actual export, derived-count consistency, **that nothing is uploaded and no off-origin request is
 made**, reload persistence, IndexedDB-not-localStorage, both layouts, the capability gating, and the full
 encryption round trip. Throwaway browser profile, deleted afterwards. Exits non-zero on any failure.
 
-Last run: **21/21 against the live site**, 2026-09-09.
+Last run: **22/22 against the live CI-built site**, 2026-09-10.
 
 There is a second suite for the passphrase-wrapped key mode:
 
