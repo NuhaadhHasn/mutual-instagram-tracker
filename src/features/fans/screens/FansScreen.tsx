@@ -16,6 +16,7 @@ import { useRoute } from '@react-navigation/native';
 import { useAppStore } from '../../../shared/store/appStore';
 import { openInstagramProfile } from '../../../services/openInstagramProfile';
 import { isLikelyBot } from '../../../shared/utils/botHeuristic';
+import { useIsDesktop } from '../../../shared/hooks/useIsDesktop';
 import { ghostScore, GhostBand } from '../../../shared/utils/ghostScore';
 import { InstagramUser } from '../../../shared/types';
 import {
@@ -118,6 +119,11 @@ export default function FansScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const isDesktop = useIsDesktop();
+  // Two columns on a desktop window: a single username stretched across
+  // ~1000px is mostly empty space. One column everywhere else, so native is
+  // untouched (useIsDesktop is web-only).
+  const listColumns = isDesktop ? 2 : 1;
 
   const heroGradient = isDark ? DarkGradients.primary : Gradients.primary;
 
@@ -268,6 +274,7 @@ export default function FansScreen({ navigation }: any) {
           </View>
         ) : (
         <FlashList
+          numColumns={listColumns}
           data={sortedList}
           keyExtractor={(item, idx) => `${item.username}-${idx}`}
           renderItem={({ item, index }) => {

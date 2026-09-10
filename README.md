@@ -141,7 +141,7 @@ the key is kept in the browser for convenience.
 The guarantees are honestly not identical, and it is worth being precise about what the no-passphrase version
 buys you. Your data stops being readable text in browser storage, and no page can read the key out — so a script that got into the origin cannot steal the key itself. But the key is kept in the same browser profile as the data, so this is **not** protection against someone who has your computer, or a copy of that profile. Android's key sits in a hardware-backed keystore and is paired with an app lock; web has neither. The in-app dialog says exactly this before you turn it on.
 
-Web also gains something the phone has no room for: at 900px and wider the bottom tab bar becomes a **sidebar** and the dashboard grid goes three across. The breakpoint is web-only by design — an Android tablet keeps the phone layout it was built and device-tested for.
+Web also gains something the phone has no room for: at 900px and wider the bottom tab bar becomes a **sidebar**, the dashboard grid goes three across, and the people lists render in two columns. The breakpoint is web-only by design — an Android tablet keeps the phone layout it was built and device-tested for.
 
 ## Development
 

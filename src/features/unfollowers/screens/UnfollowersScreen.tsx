@@ -39,6 +39,7 @@ import RecentSearches from '../../../shared/components/RecentSearches';
 import SortPill from '../../../shared/components/SortPill';
 import { useRecentSearches } from '../../../shared/hooks/useRecentSearches';
 import { haptic } from '../../../shared/utils/haptics';
+import { useIsDesktop } from '../../../shared/hooks/useIsDesktop';
 import { useMultiSelect } from '../../../shared/hooks/useMultiSelect';
 import { useDragSelect } from '../../../shared/hooks/useDragSelect';
 import { useExportUsers } from '../../../shared/hooks/useExportUsers';
@@ -209,6 +210,11 @@ export default function UnfollowersScreen() {
   const insets = useSafeAreaInsets();
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
+  const isDesktop = useIsDesktop();
+  // Two columns on a desktop window: a single username stretched across
+  // ~1000px is mostly empty space. One column everywhere else, so native is
+  // untouched (useIsDesktop is web-only).
+  const listColumns = isDesktop ? 2 : 1;
   const statusBarStyle = isDark ? 'light' : 'dark';
 
   const goToImport = () => navigation.navigate('Tabs', { screen: 'Import' });
@@ -334,7 +340,10 @@ export default function UnfollowersScreen() {
 
   // Gallery-style drag-to-multi-select (C15d). PanResponder-based, no new deps.
   const drag = useDragSelect({
-    isActive: multi.isActive,
+    // Off in the two-column desktop layout: useDragSelect derives a row index
+    // from finger-Y alone, which is only correct for a single column. It is a
+    // touch affordance anyway — desktop users select by clicking rows.
+    isActive: multi.isActive && !isDesktop,
     selected: multi.selected,
     selectMany: multi.selectMany,
     data: sortedList,
@@ -644,6 +653,7 @@ export default function UnfollowersScreen() {
         {...drag.panHandlers}
       >
       <FlashList
+        numColumns={listColumns}
         ref={drag.listRef}
         onScroll={drag.onScroll}
         scrollEventThrottle={16}
