@@ -244,7 +244,7 @@ instagram-tracker/
 - The Android app makes **zero** network requests — the `INTERNET` permission is stripped from its manifest, so it cannot reach the network at all. (`Linking.openURL` to open a profile is the only outbound action, and only when you tap.)
 - The **hosted web demo** is one honest exception: loading the page downloads the app from GitHub Pages, and GitHub logs that request like any website would. Once loaded it behaves identically — your export is parsed and stored in your own browser, nothing is uploaded, and it keeps working offline. Run the local build instead if you'd rather not touch a server at all.
 - The app never asks for your Instagram password.
-- See [PRIVACY_POLICY.md](./PRIVACY_POLICY.md).
+- Full policy: **[privacy policy](https://nuhaadhhasn.github.io/mutual-instagram-tracker/privacy-policy.html)** (source: [`docs/privacy-policy.html`](./docs/privacy-policy.html)).
 
 ## Hard rule
 

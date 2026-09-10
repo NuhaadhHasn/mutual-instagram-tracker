@@ -26,6 +26,59 @@ const hosted = process.argv.includes('--hosted');
 const BASE_URL = '/mutual-instagram-tracker/try';
 const outDir = hosted ? 'docs/try' : 'dist';
 
+/**
+ * Fix the generated page shell for real mobile browsers.
+ *
+ * Expo emits `html, body { height: 100% }` plus `body { overflow: hidden }`. On a
+ * phone that is wrong in a way you only see on a device: percentage heights resolve
+ * against the LARGE viewport — the page is sized as though the URL bar were hidden.
+ * While the URL bar is actually showing, the document is taller than the visible
+ * area, and because body scrolling is disabled there is no way to reach the part
+ * that overflows. The bottom tab bar ends up under the browser chrome, and the
+ * content above it looks like it is overlapping the bar.
+ *
+ * `100dvh` is the dynamic viewport height: it tracks the visible area as the URL
+ * bar shows and hides, which is exactly what a full-height app shell wants. The
+ * `100%` declaration stays first as the fallback for browsers without dvh.
+ *
+ * `viewport-fit=cover` lets react-native-safe-area-context read the real
+ * env(safe-area-inset-*) values, so the tab bar clears an iPhone home indicator or
+ * an Android gesture bar instead of sitting under it.
+ *
+ * Patched here rather than in a template because this app does not use
+ * expo-router, so there is no `+html.tsx` to override — the shell is generated.
+ */
+function patchShellForMobile(dir) {
+  const file = path.join(ROOT, dir, 'index.html');
+  let html = fs.readFileSync(file, 'utf8');
+  const before = html;
+
+  html = html.replace(
+    /(html,\s*body\s*\{\s*height:\s*100%;)/,
+    '$1\n        height: 100dvh;',
+  );
+  html = html.replace(
+    /(#root\s*\{[^}]*?height:\s*100%;)/,
+    '$1\n        height: 100dvh;',
+  );
+  if (!/viewport-fit=cover/.test(html)) {
+    html = html.replace(
+      /(<meta name="viewport" content="[^"]*)"/,
+      '$1, viewport-fit=cover"',
+    );
+  }
+
+  if (html === before) {
+    // Expo changed its template — fail loudly rather than silently shipping the bug again.
+    throw new Error(
+      '[build-web] could not patch the page shell for mobile viewports; the ' +
+        'generated index.html no longer matches the expected pattern.',
+    );
+  }
+  fs.writeFileSync(file, html);
+  console.log('[build-web] page shell patched for mobile (100dvh + viewport-fit=cover)');
+}
+
 const original = fs.readFileSync(APP_JSON, 'utf8');
 
 try {
@@ -44,6 +97,7 @@ try {
     cwd: ROOT,
     stdio: 'inherit',
   });
+  patchShellForMobile(outDir);
 } finally {
   if (hosted) {
     fs.writeFileSync(APP_JSON, original);
