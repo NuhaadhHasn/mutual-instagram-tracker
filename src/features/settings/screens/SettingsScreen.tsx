@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   View,
   Text,
   StyleSheet,
@@ -1020,6 +1021,23 @@ export default function SettingsScreen({ navigation }: any) {
     notifications.scheduleImportReminder(n, lastImportAt);
   };
 
+  // Settings is the ONE screen whose header scrolls away with the content —
+  // every other screen pins its header outside the scroller, so content never
+  // reaches the status bar. Expo SDK 55 draws edge-to-edge by default, so once
+  // this header is gone the rows underneath pass beneath the system clock and
+  // battery icons and collide with them.
+  //
+  // Rather than pin the hero (it is meant to scroll), fade an opaque strip in
+  // behind the status bar as the header leaves. At rest it is invisible, so the
+  // gradient still runs to the top of the screen; by the time real content
+  // reaches that band the strip is solid and nothing overlaps.
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const statusScrimOpacity = scrollY.interpolate({
+    inputRange: [0, Math.max(insets.top, 1) + Spacing.lg],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   const handleShareApp = async () => {
     haptic.tap();
     try {
@@ -1033,11 +1051,21 @@ export default function SettingsScreen({ navigation }: any) {
   };
 
   return (
-    <ScrollView
+    <View style={styles.root}>
+    {/* Animated.ScrollView, not ScrollView: with useNativeDriver the handler
+        Animated.event returns is an object that only an Animated component
+        knows how to consume — a plain ScrollView throws
+        "onScroll is not a function (it is Object)" on the first scroll. */}
+    <Animated.ScrollView
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
       stickyHeaderIndices={[]}
+      scrollEventThrottle={16}
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: true },
+      )}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -1754,14 +1782,34 @@ export default function SettingsScreen({ navigation }: any) {
         <Text style={styles.footerText}>Made with care for Instagram users</Text>
         <Text style={styles.footerSubtext}>Free · Open Source · Privacy First</Text>
       </View>
-    </ScrollView>
+    </Animated.ScrollView>
+      {/* Sits above the scroller, never takes touches. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.statusScrim,
+          { height: insets.top, opacity: statusScrimOpacity },
+        ]}
+      />
+    </View>
   );
 }
 
 function makeStyles(colors: ColorSet) {
   return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.surface,
+    },
     container: {
       flex: 1,
+      backgroundColor: colors.surface,
+    },
+    statusScrim: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
       backgroundColor: colors.surface,
     },
     busyOverlay: {
