@@ -217,7 +217,10 @@ function TabsNavigator() {
         // 'material' is what gives the left rail its full-height list look;
         // the default 'uikit' variant is built for a bottom bar.
         tabBarVariant: isDesktop ? 'material' : 'uikit',
-        tabBarLabelPosition: isDesktop ? 'beside-icon' : 'below-icon',
+        // Only pinned for the desktop rail. Left undefined elsewhere so React
+        // Navigation keeps its own width-based choice on native — forcing
+        // 'below-icon' there would override that on wide screens for no reason.
+        ...(isDesktop ? { tabBarLabelPosition: 'beside-icon' as const } : {}),
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: any;
 
