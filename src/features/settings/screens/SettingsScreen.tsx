@@ -882,11 +882,14 @@ export default function SettingsScreen({ navigation }: any) {
       try {
         await dataStore.enableEncryption(passphrase);
         setStorageEncrypted(true);
-      } catch {
+      } catch (err) {
+        const leftoverKey =
+          err instanceof Error && err.name === 'ExistingKeyError';
         dialog.alert({
           title: 'Could not enable encryption',
-          message:
-            'Your device’s secure storage was unavailable, so nothing was changed.',
+          message: leftoverKey
+            ? 'A key from a previous session is still stored here, and reusing it would mean your data was not actually protected by the passphrase you just chose. Nothing was changed. Turn encryption on without a passphrase, turn it off again, then retry — that clears the old key.'
+            : 'Your device’s secure storage was unavailable, so nothing was changed.',
           icon: 'alert-circle-outline',
           iconColor: colors.error,
         });

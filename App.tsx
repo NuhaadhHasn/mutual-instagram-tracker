@@ -139,7 +139,14 @@ function RootGate() {
       // ThemedApp is not mounted while this gate is up, so hydration has not
       // run yet — it runs for the first time once the key is in memory, with
       // everything already decryptable.
-      <PassphraseUnlockScreen onUnlock={() => setNeedsPassphrase(false)} />
+      <PassphraseUnlockScreen
+        onUnlock={() => setNeedsPassphrase(false)}
+        onWiped={() => {
+          // Same clean-slate reset the app-lock wipe performs.
+          setNeedsPassphrase(false);
+          setOnboardingDone(false);
+        }}
+      />
     );
   }
 

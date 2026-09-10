@@ -18,6 +18,8 @@ import {
   Spacing,
 } from '../../shared/constants/theme';
 import { unlockWithPassphrase } from '../../services/storage/masterKey';
+import { dataStore } from '../../services/storage/dataStore';
+import { useDialog } from '../../shared/context/DialogContext';
 
 /**
  * Shown before any app content when the web build's at-rest key is
@@ -32,10 +34,14 @@ import { unlockWithPassphrase } from '../../services/storage/masterKey';
  */
 export default function PassphraseUnlockScreen({
   onUnlock,
+  onWiped,
 }: {
   onUnlock: () => void;
+  /** Called after the user chooses to erase everything and start over. */
+  onWiped: () => void;
 }) {
   const { colors, isDark } = useTheme();
+  const dialog = useDialog();
   const styles = makeStyles(colors);
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,7 +54,12 @@ export default function PassphraseUnlockScreen({
     setError(null);
     // Yield once so the spinner paints before PBKDF2 occupies the thread.
     await new Promise((r) => setTimeout(r, 0));
-    const ok = await unlockWithPassphrase(passphrase);
+    // MUST match how the passphrase was captured when it was set. The prompt
+    // dialog submits `value.trim()`, so a passphrase typed with a leading or
+    // trailing space was STORED trimmed. Unlocking with the raw value would
+    // then never match, and there is no recovery — a stray space would lock
+    // someone out of their own data permanently.
+    const ok = await unlockWithPassphrase(passphrase.trim());
     if (ok) {
       onUnlock();
       return;
@@ -109,8 +120,29 @@ export default function PassphraseUnlockScreen({
         <Text style={styles.hint}>
           There is no recovery. Nobody — including us — can read or reset this;
           that is the point of it. If the passphrase is lost, the only way
-          forward is to clear the data and import your export again.
+          forward is to erase what is stored and import your export again.
         </Text>
+
+        <TouchableOpacity
+          onPress={async () => {
+            const ok = await dialog.confirm({
+              title: 'Erase everything and start over?',
+              message:
+                'This deletes the encrypted data, the key, and your whitelist and history from this browser. It cannot be undone — but your Instagram export file is untouched, so you can import it again.',
+              confirmLabel: 'Erase everything',
+              destructive: true,
+              icon: 'trash-outline',
+            });
+            if (!ok) return;
+            await dataStore.wipeEverything();
+            onWiped();
+          }}
+          disabled={busy}
+          activeOpacity={0.7}
+          style={styles.forgot}
+        >
+          <Text style={styles.forgotText}>I've lost my passphrase</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -167,6 +199,13 @@ const makeStyles = (colors: ColorSet) =>
     },
     buttonDisabled: { opacity: 0.5 },
     buttonText: { color: colors.primary, fontSize: 16, fontWeight: '700' },
+    forgot: { marginTop: Spacing.md, padding: Spacing.sm },
+    forgotText: {
+      color: 'rgba(255,255,255,0.85)',
+      fontSize: 13,
+      fontWeight: '600',
+      textDecorationLine: 'underline',
+    },
     hint: {
       fontSize: 12,
       color: 'rgba(255,255,255,0.7)',

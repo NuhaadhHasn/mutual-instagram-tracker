@@ -110,6 +110,18 @@ const pruneSnapshotUsernames = (
   });
 };
 
+/**
+ * Thrown when passphrase protection was requested but an encryption key is
+ * already present, so honouring the request would mean minting a key over one
+ * that existing ciphertext may depend on.
+ */
+export class ExistingKeyError extends Error {
+  constructor() {
+    super('An encryption key already exists on this device');
+    this.name = 'ExistingKeyError';
+  }
+}
+
 export class DataStore {
   // Cached active account id so the (synchronous-feeling) key builder is cheap.
   private currentAccountId: string | null = null;
@@ -225,9 +237,18 @@ export class DataStore {
     // A passphrase (web only) selects the wrapped-key mode for a NEW key; it
     // deliberately cannot re-wrap an existing one, because that path would have
     // to mint or rewrite a key while ciphertext already depends on it.
+    const existing = getCachedMasterKey() ?? (await loadMasterKey());
+    // If the user explicitly asked for passphrase protection, we must not
+    // quietly hand them device mode instead. That can happen when a key
+    // survives from an interrupted disable: the reuse guard above would adopt
+    // it, the toggle would report success, and the user would believe their
+    // data needed a passphrase when it did not. Refuse and say why — a
+    // security control that silently downgrades is worse than one that fails.
+    if (passphrase && existing) {
+      throw new ExistingKeyError();
+    }
     const key =
-      getCachedMasterKey() ??
-      (await loadMasterKey()) ??
+      existing ??
       (passphrase
         ? await createAndStoreMasterKeyWithPassphrase(passphrase)
         : await createAndStoreMasterKey());
