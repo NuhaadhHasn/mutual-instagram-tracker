@@ -1,0 +1,87 @@
+name: Deploy Pages
+
+# Builds the web demo and publishes the docs/ site to GitHub Pages.
+#
+# Why this exists: the demo used to be committed to main as docs/try/, which
+# meant every rebuild added another ~3 MB hashed bundle to git history —
+# permanently, and uncompressibly. Building here instead keeps build output out
+# of the repository entirely, and has the side benefit that the published demo
+# can no longer drift from main the way it did when a rebuild was a manual step
+# someone could forget.
+#
+# docs/ still holds the hand-written pages (index.html, privacy-policy.html)
+# and the README's screenshots, which are source, not build output, and stay
+# committed. Only docs/try/ is generated.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Contents for checkout; the other two are what deploy-pages needs to publish.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race. Queue rather than cancel: a cancelled deploy
+# could leave the site on an older build than main.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Writes docs/try/. Uses experiments.baseUrl so assets resolve under the
+      # /mutual-instagram-tracker/try/ subpath, then restores app.json.
+      - name: Build web demo
+        run: npm run build:web:hosted
+
+      # Jekyll would strip Expo's _expo/ directory and the demo would load with
+      # no JavaScript. Belt and braces — the file is committed too.
+      - name: Ensure .nojekyll
+        run: touch docs/.nojekyll
+
+      - name: Verify the build actually produced a bundle
+        run: |
+          test -f docs/try/index.html || { echo "no demo index.html"; exit 1; }
+          grep -q '_expo/static/js' docs/try/index.html || { echo "demo has no bundle reference"; exit 1; }
+          test -f docs/index.html || { echo "landing page missing"; exit 1; }
+          test -f docs/privacy-policy.html || { echo "privacy policy missing"; exit 1; }
+          echo "site looks complete:"
+          du -sh docs
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -46,3 +46,10 @@ yarn-error.*
 
 # IDE
 .idea/
+
+# Web build output. docs/try/ is the published demo, but it is GENERATED —
+# .github/workflows/pages.yml rebuilds it on every push and deploys from the
+# artifact, so committing it only added a new ~3 MB hashed bundle to history
+# on every rebuild. The hand-written pages and the README screenshots in
+# docs/ are source and stay tracked.
+docs/try/
