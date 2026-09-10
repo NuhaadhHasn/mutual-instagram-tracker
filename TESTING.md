@@ -180,6 +180,10 @@ Then open http://localhost:8090. It must be served over http — opening `index.
 
 **The published demo:** https://nuhaadhhasn.github.io/mutual-instagram-tracker/try/
 
+That URL is rebuilt and redeployed by CI on every push to `main`
+(`.github/workflows/pages.yml`), so it always matches the code — there is no manual publish step, and
+`docs/try/` must not be committed.
+
 ### What to check on web
 
 | Area | Expected |
