@@ -164,6 +164,26 @@ bundle, which 404 under a Pages subpath. It sets `experiments.baseUrl` for the d
 of that one build and restores `app.json` afterwards, so the local build stays
 root-relative.
 
+### Testing
+
+```bash
+npm test                                        # unit tests over the pure logic
+npm run qa:web -- <url> <path-to-an-export.zip> # 22 browser checks, real Chrome
+npm run qa:web:passphrase -- <url>              # 12 checks of passphrase-mode encryption
+```
+
+The browser suites drive your installed Chrome over the DevTools Protocol in a throwaway
+profile, and exit non-zero on failure. They cover the whole path: onboarding, importing a
+real export through the genuine file chooser, reload persistence, both responsive layouts,
+that the browser-impossible features really are absent, and the encryption round trip.
+
+Two of the checks test the product's central claim rather than its code — that after load
+the page issues **no request with a body and no off-origin request at all**. That is why
+"your data never leaves the browser" is something this repo can demonstrate rather than
+merely assert.
+
+Set `MUTUAL_CHROME` if Chrome isn't in a standard location.
+
 ### Project layout
 
 ```
