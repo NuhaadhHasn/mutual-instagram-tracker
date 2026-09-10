@@ -386,10 +386,11 @@ npm test
 
 # Check TypeScript
 npx tsc --noEmit
-
-# Format code
-npm run format
 ```
+
+> There is deliberately no `npm run format`: the project has no prettier or
+> eslint dependency, so formatting is whatever your editor does. Type-checking
+> is the gate that actually runs in CI.
 
 ---
 

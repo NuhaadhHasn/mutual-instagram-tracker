@@ -12,7 +12,32 @@ const os = require('os');
 const path = require('path');
 
 const BASE = process.argv[2];
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// Chrome is located per-platform, with an override for anything unusual:
+//   MUTUAL_CHROME=/path/to/chrome npm run qa:web -- ...
+// Hardcoding the Windows path made this script silently unusable for anyone
+// else, which matters because it ships in a public repository.
+function findChrome() {
+  if (process.env.MUTUAL_CHROME) return process.env.MUTUAL_CHROME;
+  const candidates = {
+    win32: [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    ],
+    darwin: [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ],
+    linux: ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'],
+  }[process.platform] || [];
+  const hit = candidates.find((c) => fs.existsSync(c));
+  if (!hit) {
+    console.error('Could not find Chrome. Set MUTUAL_CHROME to its full path.');
+    process.exit(2);
+  }
+  return hit;
+}
+const CHROME = findChrome();
 const PORT = 9455;
 const PASS = 'correct horse battery staple';
 

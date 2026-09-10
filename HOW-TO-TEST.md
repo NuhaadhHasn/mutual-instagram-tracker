@@ -88,7 +88,7 @@ If fails: See "Common Errors" below
 ```
 1. Tap "Import Instagram Data"
 2. Select your ZIP file:
-   C:\Users\nuhaa\instagram Followers\instagram-nuhaadh.h-2025-11-28-lhiLd2mg.zip
+   C:\Users\nuhaa\instagram Followers\instagram-<your-handle>-<date>-<id>.zip
 
 Expected Result:
 - Progress indicator shows
@@ -406,7 +406,7 @@ import { FlashList } from '@shopify/flash-list';
 
 **File location:**
 ```
-C:\Users\nuhaa\instagram Followers\instagram-nuhaadh.h-2025-11-28-lhiLd2mg.zip
+C:\Users\nuhaa\instagram Followers\instagram-<your-handle>-<date>-<id>.zip
 ```
 
 **Expected results:**

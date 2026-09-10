@@ -55,7 +55,7 @@ npx expo start --android
 ### 1. Get Test Data
 
 Use the Instagram data export ZIP file you already have:
-- Location: `C:\Users\nuhaa\instagram Followers\instagram-nuhaadh.h-2025-11-28-lhiLd2mg.zip`
+- Location: `C:\Users\nuhaa\instagram Followers\instagram-<your-handle>-<date>-<id>.zip`
 
 ### 2. Test Flow
 

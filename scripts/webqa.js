@@ -22,7 +22,32 @@ const path = require('path');
 
 const BASE = process.argv[2];
 const ZIP = process.argv[3];
-const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+// Chrome is located per-platform, with an override for anything unusual:
+//   MUTUAL_CHROME=/path/to/chrome npm run qa:web -- ...
+// Hardcoding the Windows path made this script silently unusable for anyone
+// else, which matters because it ships in a public repository.
+function findChrome() {
+  if (process.env.MUTUAL_CHROME) return process.env.MUTUAL_CHROME;
+  const candidates = {
+    win32: [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    ],
+    darwin: [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    ],
+    linux: ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'],
+  }[process.platform] || [];
+  const hit = candidates.find((c) => fs.existsSync(c));
+  if (!hit) {
+    console.error('Could not find Chrome. Set MUTUAL_CHROME to its full path.');
+    process.exit(2);
+  }
+  return hit;
+}
+const CHROME = findChrome();
 const PORT = 9444;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -180,11 +205,24 @@ const idb = `(async () => {
     return { followers: g('Followers'), following: g('Following'), unfollowers: g('Unfollowers'),
              mutual: g('Mutual'), fans: g('Fans'), text: t.slice(0, 60) };
   })()`);
-  check('Import parses the real ZIP', stats.followers === '949' && stats.following === '1,770',
-    JSON.stringify(stats));
+  // Assert the RELATIONSHIPS, not one person's numbers. The script ships
+  // publicly, so it has to pass with whatever export the runner supplies —
+  // and the identities below are the real correctness property anyway:
+  // following = mutual + unfollowers, and followers = mutual + fans.
+  const num = (v) => (v == null ? NaN : parseInt(String(v).replace(/,/g, ''), 10));
+  const n = {
+    followers: num(stats.followers), following: num(stats.following),
+    unfollowers: num(stats.unfollowers), mutual: num(stats.mutual), fans: num(stats.fans),
+  };
+  const parsed = Object.values(n).every((v) => Number.isFinite(v)) && n.followers > 0 && n.following > 0;
+  check('Import parses the supplied ZIP', parsed, JSON.stringify(n));
   check('Derived counts are self-consistent',
-    stats.unfollowers === '980' && stats.mutual === '790' && stats.fans === '159',
-    'unf=' + stats.unfollowers + ' mut=' + stats.mutual + ' fans=' + stats.fans);
+    parsed && n.mutual + n.unfollowers === n.following && n.mutual + n.fans === n.followers,
+    'mutual+unfollowers=' + (n.mutual + n.unfollowers) + ' vs following=' + n.following +
+    '; mutual+fans=' + (n.mutual + n.fans) + ' vs followers=' + n.followers);
+  // Remember a number that is definitely on screen, to recognise the same data
+  // again after a reload without pinning the test to a specific export.
+  const marker = String(stats.followers);
 
   // ---------- 4. the privacy claim: nothing is uploaded ----------
   const reqs = events.filter((e) => e.method === 'Network.requestWillBeSent').map((e) => e.params.request);
@@ -199,7 +237,7 @@ const idb = `(async () => {
   const before = await evaluate(idb, true);
   await send('Page.reload');
   await sleep(9000);
-  const persisted = await evaluate(`document.body.innerText.includes('949')`);
+  const persisted = await evaluate('document.body.innerText.includes(' + JSON.stringify(marker) + ')');
   check('Data survives a reload (IndexedDB)', persisted === true);
   check('Storage is IndexedDB, not localStorage',
     before.keys.length > 0 && (await evaluate('Object.keys(localStorage).length')) === 0,
@@ -277,7 +315,7 @@ const idb = `(async () => {
 
   await send('Page.reload');
   await sleep(10000);
-  const afterEnc = await evaluate(`document.body.innerText.includes('949')`);
+  const afterEnc = await evaluate('document.body.innerText.includes(' + JSON.stringify(marker) + ')');
   check('Encrypted data decrypts after a cold reload', afterEnc === true);
 
   console.log('\n=== ' + results.filter((r) => r.pass).length + '/' + results.length + ' passed ===');
