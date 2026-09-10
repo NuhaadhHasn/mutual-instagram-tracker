@@ -12,6 +12,7 @@ import { isAtRestEnvelope } from './atRestTypes';
 import {
   clearCachedMasterKey,
   createAndStoreMasterKey,
+  createAndStoreMasterKeyWithPassphrase,
   deleteMasterKey,
   getCachedMasterKey,
   loadMasterKey,
@@ -217,14 +218,19 @@ export class DataStore {
    * flag-last so an interruption leaves already-encrypted values readable (reads
    * decrypt whenever the key exists, independent of the flag). Idempotent.
    */
-  async enableEncryption(): Promise<void> {
+  async enableEncryption(passphrase?: string): Promise<void> {
     // Reuse an existing key if one is present — NEVER mint a new key over an
     // old one. Overwriting would orphan any values already encrypted under the
     // previous key (e.g. after an interrupted enable), permanently losing them.
+    // A passphrase (web only) selects the wrapped-key mode for a NEW key; it
+    // deliberately cannot re-wrap an existing one, because that path would have
+    // to mint or rewrite a key while ciphertext already depends on it.
     const key =
       getCachedMasterKey() ??
       (await loadMasterKey()) ??
-      (await createAndStoreMasterKey());
+      (passphrase
+        ? await createAndStoreMasterKeyWithPassphrase(passphrase)
+        : await createAndStoreMasterKey());
     const accounts = await this.getAccounts();
     for (const acc of accounts) {
       for (const base of SENSITIVE_BASE_KEYS) {

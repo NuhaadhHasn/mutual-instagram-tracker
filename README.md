@@ -133,7 +133,13 @@ Storage differs underneath too: Android uses AsyncStorage, web uses IndexedDB. K
 
 **Encryption at rest** works on both, by different means. Android holds a random key in the device Keychain/Keystore and encrypts with AES-256-CBC. The browser has no keystore, so web generates a **non-extractable** AES-256-**GCM** key: it can encrypt and decrypt, but no script — including one injected into the page — can read the key material back out. GCM is authenticated, so on web a single altered byte is rejected outright rather than surfacing as corrupt output.
 
-The guarantees are honestly not identical, and it is worth being precise about what the web version buys you. Your data stops being readable text in browser storage, and no page can read the key out — so a script that got into the origin cannot steal the key itself. But the key is kept in the same browser profile as the data, so this is **not** protection against someone who has your computer, or a copy of that profile. Android's key sits in a hardware-backed keystore and is paired with an app lock; web has neither. The in-app dialog says exactly this before you turn it on.
+On web you choose how the key is protected when you switch encryption on. **With a passphrase** (PBKDF2-SHA256,
+600k iterations) the browser stores only a wrapped blob — a copy of your browser profile is worthless without the
+passphrase, and Mutual asks for it each time you open the app. There is no recovery, by design. **Without one**,
+the key is kept in the browser for convenience.
+
+The guarantees are honestly not identical, and it is worth being precise about what the no-passphrase version
+buys you. Your data stops being readable text in browser storage, and no page can read the key out — so a script that got into the origin cannot steal the key itself. But the key is kept in the same browser profile as the data, so this is **not** protection against someone who has your computer, or a copy of that profile. Android's key sits in a hardware-backed keystore and is paired with an app lock; web has neither. The in-app dialog says exactly this before you turn it on.
 
 Web also gains something the phone has no room for: at 900px and wider the bottom tab bar becomes a **sidebar** and the dashboard grid goes three across. The breakpoint is web-only by design — an Android tablet keeps the phone layout it was built and device-tested for.
 

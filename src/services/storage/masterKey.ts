@@ -64,3 +64,45 @@ export async function deleteMasterKey(): Promise<void> {
 export function clearCachedMasterKey(): void {
   cachedKey = null;
 }
+
+// ---- passphrase mode: web-only, stubbed here -------------------------------
+//
+// The browser has no keystore, so `masterKey.web.ts` offers an optional mode
+// where the data key is wrapped with a PBKDF2 key derived from a passphrase.
+// Native does not need it — the key already lives in the device Keychain /
+// Keystore, which is strictly stronger than anything a passphrase buys — but
+// the shared startup path in App.tsx calls these on every platform, so they
+// exist here as honest no-ops.
+
+/** Always false on native: the Keychain/Keystore key needs no passphrase. */
+export async function needsPassphraseUnlock(): Promise<boolean> {
+  return false;
+}
+
+/** Always false on native — nothing is passphrase-wrapped here. */
+export async function isPassphraseProtected(): Promise<boolean> {
+  return false;
+}
+
+/**
+ * Never reachable on native; `needsPassphraseUnlock` gates every caller.
+ *
+ * The parameter is unused but MUST stay, and must keep the same type as the web
+ * implementation: tsc resolves importers to this file, so a signature that
+ * exists only on the web side would compile here and blow up in the browser.
+ * (These two modules have no shared contract file the way `kv` and
+ * `atRestCrypto` do, because the key itself is a `string` here and a
+ * `CryptoKey` there — so keeping the signatures aligned is manual.)
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function unlockWithPassphrase(_passphrase: string): Promise<boolean> {
+  return false;
+}
+
+/** Never reachable on native; Settings only offers the choice when isWeb. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function createAndStoreMasterKeyWithPassphrase(
+  _passphrase: string,
+): Promise<string> {
+  throw new Error('Passphrase-wrapped keys are a web-only mode');
+}

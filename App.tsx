@@ -26,6 +26,8 @@ import { useScreenCaptureGuard } from './src/shared/hooks/useScreenCaptureGuard'
 import { useAppStore } from './src/shared/store/appStore';
 import { dataStore } from './src/services/storage/dataStore';
 import LockScreen from './src/features/lock/LockScreen';
+import PassphraseUnlockScreen from './src/features/lock/PassphraseUnlockScreen';
+import { needsPassphraseUnlock } from './src/services/storage/masterKey';
 import ErrorBoundary from './src/shared/components/ErrorBoundary';
 import { canLockApp } from './src/shared/utils/platformCapabilities';
 import { useIsDesktop } from './src/shared/hooks/useIsDesktop';
@@ -61,12 +63,21 @@ export default function App() {
 function RootGate() {
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
   const [locked, setLocked] = useState(false);
+  // Web-only: true when the at-rest key is passphrase-wrapped and has not been
+  // unwrapped yet. Unlike the app lock this is not a courtesy gate — nothing
+  // can be decrypted until it clears. Always false on native.
+  const [needsPassphrase, setNeedsPassphrase] = useState(false);
   const backgroundedAt = useRef<number | null>(null);
 
   useEffect(() => {
-    Promise.all([kv.getItem(ONBOARDING_KEY), dataStore.getAppLock()])
-      .then(([val, appLock]) => {
+    Promise.all([
+      kv.getItem(ONBOARDING_KEY),
+      dataStore.getAppLock(),
+      needsPassphraseUnlock(),
+    ])
+      .then(([val, appLock, needsPass]) => {
         setOnboardingDone(val === 'true');
+        setNeedsPassphrase(needsPass);
         // `canLockApp` guards against a permanent lockout: web has no biometric
         // or passcode prompt to unlock WITH, so honouring a stored lock flag
         // there (e.g. carried in from a restored Android backup) would leave the
@@ -120,6 +131,15 @@ function RootGate() {
           setOnboardingDone(true);
         }}
       />
+    );
+  }
+
+  if (needsPassphrase) {
+    return (
+      // ThemedApp is not mounted while this gate is up, so hydration has not
+      // run yet — it runs for the first time once the key is in memory, with
+      // everything already decryptable.
+      <PassphraseUnlockScreen onUnlock={() => setNeedsPassphrase(false)} />
     );
   }
 

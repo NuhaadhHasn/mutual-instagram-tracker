@@ -791,24 +791,96 @@ export default function SettingsScreen({ navigation }: any) {
     haptic.tap();
     if (backupBusy) return;
     if (value) {
-      const ok = await dialog.confirm({
-        title: 'Encrypt data at rest?',
-        message: isWeb
-          ? // Be precise about what a browser can actually promise. The key is
-            // non-extractable, so no page can read it out — but it is stored in
-            // the same browser profile as the data, so this is NOT protection
-            // against someone who has your computer or a copy of that profile.
-            // Claiming otherwise would be exactly the kind of reassuring lie
-            // this app refuses to tell.
-            'Your follower data, whitelist, history, and unfollowed list stop being readable text in this browser’s storage. The key stays in this browser and no page can read it out — but it is kept in the same browser profile as the data, so this is not protection against someone who has your computer. For that, use the Android app and its app lock.'
-          : 'Your follower data, whitelist, history, and unfollowed list will be scrambled with a key held in this device’s secure keychain. This can take a few seconds.',
-        confirmLabel: 'Encrypt',
-        icon: 'lock-closed-outline',
-      });
-      if (!ok) return;
-      setBackupBusy('Encrypting your data…');
+      let passphrase: string | undefined;
+
+      if (isWeb) {
+        // Web gets a real choice, because the two modes differ in the only way
+        // that matters: whether the key is useful to someone holding a copy of
+        // the browser profile. Native has no such choice to offer — its key is
+        // already in a hardware-backed keystore.
+        const mode = await dialog.actionSheet({
+          title: 'Encrypt data at rest',
+          message: 'How should the key be protected?',
+          options: [
+            {
+              label: 'With a passphrase (strongest)',
+              value: 'passphrase',
+              icon: 'key-outline',
+            },
+            {
+              label: 'No passphrase (convenient)',
+              value: 'device',
+              icon: 'flash-outline',
+            },
+          ],
+        });
+        if (mode === null) return;
+
+        if (mode === 'passphrase') {
+          const p1 = await dialog.prompt({
+            title: 'Set a passphrase',
+            message:
+              'Your data is locked with this and nothing else. You will enter it each time you open Mutual, and there is no way to recover it — if you lose it, the data is gone.',
+            placeholder: 'Passphrase',
+            confirmLabel: 'Next',
+            secureTextEntry: true,
+            icon: 'key-outline',
+          });
+          if (p1 === null) return;
+          if (p1.length < 8) {
+            dialog.alert({
+              title: 'Passphrase too short',
+              message: 'Use at least 8 characters — this is the only thing protecting your data.',
+              icon: 'alert-circle',
+              iconColor: colors.warning,
+            });
+            return;
+          }
+          const p2 = await dialog.prompt({
+            title: 'Confirm passphrase',
+            message: 'Type it again to avoid a typo locking you out of your own data.',
+            placeholder: 'Re-enter passphrase',
+            confirmLabel: 'Encrypt',
+            secureTextEntry: true,
+            icon: 'key-outline',
+          });
+          if (p2 === null) return;
+          if (p1 !== p2) {
+            dialog.alert({
+              title: 'Passphrases don’t match',
+              message: 'Nothing was changed. Please try again.',
+              icon: 'alert-circle',
+              iconColor: colors.error,
+            });
+            return;
+          }
+          passphrase = p1;
+        } else {
+          const ok = await dialog.confirm({
+            title: 'Encrypt without a passphrase?',
+            message:
+              'Your data stops being readable text in this browser’s storage, and no page can read the key out. But the key is kept in the same browser profile as the data, so this does not protect it from someone who has your computer. A passphrase does.',
+            confirmLabel: 'Encrypt',
+            icon: 'lock-closed-outline',
+          });
+          if (!ok) return;
+        }
+      } else {
+        const ok = await dialog.confirm({
+          title: 'Encrypt data at rest?',
+          message:
+            'Your follower data, whitelist, history, and unfollowed list will be scrambled with a key held in this device’s secure keychain. This can take a few seconds.',
+          confirmLabel: 'Encrypt',
+          icon: 'lock-closed-outline',
+        });
+        if (!ok) return;
+      }
+
+      setBackupBusy(
+        passphrase ? 'Deriving your key and encrypting…' : 'Encrypting your data…',
+      );
       try {
-        await dataStore.enableEncryption();
+        await dataStore.enableEncryption(passphrase);
         setStorageEncrypted(true);
       } catch {
         dialog.alert({

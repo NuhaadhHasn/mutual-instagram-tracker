@@ -204,6 +204,17 @@ encryption round trip. Throwaway browser profile, deleted afterwards. Exits non-
 
 Last run: **21/21 against the live site**, 2026-09-09.
 
+There is a second suite for the passphrase-wrapped key mode:
+
+```bash
+npm run qa:web:passphrase -- http://localhost:8090
+```
+
+12 checks: the mode choice appears, the confirm field is genuinely empty (a pre-filled one would defeat the
+confirmation), the data encrypts, **the stored key is a wrapped record rather than a usable key**, a reload
+demands the passphrase, no data is visible while locked, a wrong passphrase is rejected, and the right one
+decrypts. Last run: **12/12**, 2026-09-10.
+
 ### Where to look when something is wrong
 
 - **Blank page on GitHub Pages** — almost always the `_expo/` directory being stripped by Jekyll. `docs/.nojekyll`

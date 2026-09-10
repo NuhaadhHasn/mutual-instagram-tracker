@@ -58,7 +58,8 @@ async function trustedClickAt(x, y) {
 async function centreOf(selectorOrText) {
   return evaluate(`(() => {
     const q = ${JSON.stringify(selectorOrText)};
-    let el = document.querySelector(q);
+    let el = null;
+    try { el = document.querySelector(q); } catch (e) { /* q is text, not a selector */ }
     if (!el) {
       const all = [...document.querySelectorAll('div,span,a')];
       el = all.filter(e => e.textContent.trim() === q && e.children.length === 0).pop()
@@ -254,7 +255,15 @@ const idb = `(async () => {
   if (swBox) {
     await sleep(500);
     await trustedClickAt(swBox.x, swBox.y);
-    await sleep(1500);
+    await sleep(1800);
+    // Web asks how the key should be protected first. This suite covers the
+    // device-key path; the passphrase path has its own suite (passqa.js).
+    const choosing = await evaluate(`document.body.innerText.includes('No passphrase (convenient)')`);
+    check('Web offers a key-protection choice', choosing === true);
+    if (choosing) {
+      await clickThing('No passphrase (convenient)', 'device-key option');
+      await sleep(1500);
+    }
     await clickThing('Encrypt', 'confirm Encrypt');
     await sleep(9000);
   }
@@ -276,6 +285,12 @@ const idb = `(async () => {
   if (fails.length) { console.log('\nFAILURES:'); fails.forEach((f) => console.log('  - ' + f.name + ': ' + f.detail)); }
 
   ws.close(); chrome.kill();
-  fs.rmSync(profile, { recursive: true, force: true });
+  // Chrome releases its profile files asynchronously, so a delete straight
+  // after kill() can hit EBUSY on Windows. Never let cleanup decide the
+  // exit code — the checks already ran.
+  await sleep(1500);
+  try { fs.rmSync(profile, { recursive: true, force: true }); } catch (e) {
+    console.log('  (note: temp profile left at ' + profile + ' — Chrome still had it open)');
+  }
   process.exit(fails.length ? 1 : 0);
 })().catch((e) => { console.error('HARNESS ERROR', e); process.exit(2); });

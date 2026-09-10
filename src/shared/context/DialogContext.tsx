@@ -76,6 +76,12 @@ type DialogState =
     }
   | {
       kind: 'prompt';
+      /**
+       * Unique per opened prompt. Used as PromptBody's React key so a second
+       * prompt opened straight after the first mounts a FRESH component. See
+       * the note at the render site.
+       */
+      seq: number;
       options: PromptOptions;
       resolve: (v: string | null) => void;
     }
@@ -127,10 +133,12 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const promptSeq = useRef(0);
   const prompt = useCallback(
     (options: PromptOptions) =>
       new Promise<string | null>((resolve) => {
-        setState({ kind: 'prompt', options, resolve });
+        promptSeq.current += 1;
+        setState({ kind: 'prompt', options, resolve, seq: promptSeq.current });
       }),
     [],
   );
@@ -220,7 +228,17 @@ function DialogRenderer({
             />
           )}
           {state?.kind === 'prompt' && (
+            /*
+             * `key` matters here. A caller that chains two prompts — "set a
+             * passphrase" then "confirm it" — resolves the first and opens the
+             * second in the same microtask, so React never renders the null
+             * state in between. Without a changing key it reuses this
+             * component instance, and `useState(initialValue)` keeps the old
+             * text: the confirm field arrives pre-filled with the answer,
+             * which silently defeats the whole point of confirming.
+             */
             <PromptBody
+              key={state.seq}
               options={state.options}
               colors={colors}
               styles={styles}
