@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "description": "Mutual — see who's really with you. Privacy-first Instagram follower tracker. 100% local, no login, no tracking.",
+    "description": "Mutual \u2014 see who's really with you. Privacy-first Instagram follower tracker. 100% local, no login, no tracking.",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -30,7 +30,7 @@
         "backgroundColor": "#E1306C"
       },
       "package": "com.nuhaadh.mutual",
-      "versionCode": 10,
+      "versionCode": 11,
       "predictiveBackGestureEnabled": false,
       "blockedPermissions": [
         "android.permission.INTERNET",
